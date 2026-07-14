@@ -1,0 +1,6 @@
+output/
+ACE-Step-1.5/
+__pycache__/
+*.pyc
+.env
+kaggle.json

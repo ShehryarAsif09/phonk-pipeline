@@ -1,0 +1,7 @@
+# CPU-side pipeline (prompts, covers, metadata, packaging) - runs anywhere
+Pillow>=10.0.0
+
+# Only needed on the GPU machine/Kaggle kernel that runs generate/generate_music.py.
+# Install these there via ACE-Step-1.5's own requirements.txt, not here:
+#   git clone https://github.com/ace-step/ACE-Step-1.5.git
+#   pip install -r ACE-Step-1.5/requirements.txt
