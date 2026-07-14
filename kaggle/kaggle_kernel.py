@@ -22,6 +22,7 @@ producing real revenue, move generation to a paid GPU rental (RTX
 you're not depending on a free tier for something you're monetizing.
 """
 
+import base64
 import json
 import os
 import subprocess
@@ -29,7 +30,7 @@ import sys
 import zipfile
 from pathlib import Path
 
-PROMPTS_JSON = """__PROMPTS_JSON_PLACEHOLDER__"""
+PROMPTS_B64 = "__PROMPTS_B64_PLACEHOLDER__"
 
 WORK_DIR = Path("/kaggle/working")
 REPO_DIR = WORK_DIR / "ACE-Step-1.5"
@@ -44,15 +45,38 @@ def sh(cmd: str):
 def main():
     AUDIO_DIR.mkdir(parents=True, exist_ok=True)
     prompts_path = WORK_DIR / "prompts_batch.json"
-    prompts_path.write_text(PROMPTS_JSON)
+    if PROMPTS_B64 != "__PROMPTS_B64_PLACEHOLDER__":
+        prompts_json = base64.b64decode(PROMPTS_B64.encode("ascii")).decode("utf-8")
+    else:
+        prompts_json = Path("output/prompts_batch.json").read_text() if Path("output/prompts_batch.json").exists() else "[]"
+    prompts_path.write_text(prompts_json)
 
     if not REPO_DIR.exists():
         sh(f"git clone --depth 1 https://github.com/ace-step/ACE-Step-1.5.git {REPO_DIR}")
         sh(f"pip install -q -r {REPO_DIR}/requirements.txt")
 
-    # generate_music.py is bundled into this same directory at push time by the
-    # GitHub Actions workflow (kaggle kernels push uploads every file sitting
-    # next to kernel-metadata.json), so this import just works on Kaggle.
+    # Phase 4: Checkpoint caching from private Kaggle Dataset under /kaggle/input
+    checkpoints_dest = REPO_DIR / "checkpoints"
+    checkpoints_dest.mkdir(parents=True, exist_ok=True)
+    input_dir = Path("/kaggle/input")
+    if input_dir.exists():
+        for ds_dir in input_dir.iterdir():
+            if ds_dir.is_dir() and ("acestep" in ds_dir.name.lower() or "checkpoint" in ds_dir.name.lower()):
+                print(f"Found local checkpoint dataset: {ds_dir}")
+                for item in ds_dir.iterdir():
+                    target = checkpoints_dest / item.name
+                    if not target.exists():
+                        try:
+                            target.symlink_to(item)
+                            print(f"  Symlinked {item.name} -> {target}")
+                        except Exception as e:
+                            import shutil
+                            if item.is_dir():
+                                shutil.copytree(item, target)
+                            else:
+                                shutil.copy2(item, target)
+                            print(f"  Copied {item.name} -> {target} ({e})")
+
     sys.path.insert(0, str(Path(__file__).parent))
     import generate_music as gm
     gm.run(str(prompts_path), str(AUDIO_DIR), str(REPO_DIR))

@@ -1,0 +1,102 @@
+name: Package and Publish Phonk Batch (Workflow B)
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 03:00 UTC daily (~1 hr after trigger)
+  workflow_dispatch: {}
+
+jobs:
+  package_publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pipeline dependencies
+        run: pip install --break-system-packages pillow kaggle
+
+      - name: Configure Kaggle credentials
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          mkdir -p ~/.kaggle
+          echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+
+      - name: Check Kaggle kernel status
+        id: check_status
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          from pathlib import Path
+          from kaggle.api.kaggle_api_extended import KaggleApi
+
+          meta = json.loads(Path("kaggle/kernel-metadata.json").read_text())
+          user = os.environ.get("KAGGLE_USERNAME")
+          slug_id = meta["id"]
+          if "YOUR_KAGGLE_USERNAME" in slug_id and user:
+              slug_id = slug_id.replace("YOUR_KAGGLE_USERNAME", user)
+
+          api = KaggleApi()
+          api.authenticate()
+
+          print(f"Checking kernel status for: {slug_id}")
+          try:
+              # Note: method is kernels_status (plural), taking a single 'owner/kernel-slug' string
+              res = api.kernels_status(slug_id)
+              print(f"Raw kernels_status output: {repr(res)}")
+              if isinstance(res, dict):
+                  status = str(res.get("status", "")).lower()
+              elif hasattr(res, "status"):
+                  status = str(getattr(res, "status", "")).lower()
+              else:
+                  status = str(res).lower()
+          except Exception as e:
+              print(f"Failed to query kernel status: {e}")
+              status = "error"
+
+          print(f"Parsed status: '{status}'")
+          out_file = os.environ.get("GITHUB_OUTPUT", "")
+          if status == "complete":
+              print("Kernel is complete! Proceeding to download and package.")
+              if out_file:
+                  with open(out_file, "a") as f:
+                      f.write("ready=true\n")
+          else:
+              print(f"Kernel not finished yet (current status: {status}). Exiting cleanly to conserve runner minutes.")
+              if out_file:
+                  with open(out_file, "a") as f:
+                      f.write("ready=false\n")
+          PY
+
+      - name: Re-generate prompts, covers, metadata (to match state)
+        if: steps.check_status.outputs.ready == 'true'
+        run: |
+          python prompts/prompt_generator.py --count 20 --out output/prompts_batch.json
+          python cover/cover_art.py --prompts output/prompts_batch.json --out-dir output/covers
+          python metadata/metadata_builder.py --prompts output/prompts_batch.json --out output/metadata.json
+
+      - name: Download generated audio from Kaggle
+        if: steps.check_status.outputs.ready == 'true'
+        run: |
+          SLUG=$(python -c "import json, os; meta = json.load(open('kaggle/kernel-metadata.json')); print(meta['id'].replace('YOUR_KAGGLE_USERNAME', os.environ.get('KAGGLE_USERNAME', 'YOUR_KAGGLE_USERNAME')))")
+          kaggle kernels output "$SLUG" -p output/kaggle_download/
+          mkdir -p output/audio
+          unzip -o output/kaggle_download/phonk_audio_batch.zip -d output/audio_tmp || true
+          find output/audio_tmp -name "*.wav" -exec mv {} output/audio/ \;
+
+      - name: 5. Package release zip
+        if: steps.check_status.outputs.ready == 'true'
+        run: |
+          python package.py --covers output/covers --metadata output/metadata.json --audio output/audio --out-dir output
+
+      - name: Publish to GitHub Releases
+        if: steps.check_status.outputs.ready == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "phonk-batch-${{ github.run_id }}"
+          files: output/*.zip
