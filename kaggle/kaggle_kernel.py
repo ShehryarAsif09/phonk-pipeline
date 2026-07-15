@@ -46,7 +46,7 @@ def sh(cmd: str):
 def main():
     AUDIO_DIR.mkdir(parents=True, exist_ok=True)
     prompts_path = WORK_DIR / "prompts_batch.json"
-    if PROMPTS_B64 != "__PROMPTS_B64_PLACEHOLDER__":
+    if not PROMPTS_B64.startswith("__"):
         prompts_json = base64.b64decode(PROMPTS_B64.encode("ascii")).decode("utf-8")
     else:
         prompts_json = Path("output/prompts_batch.json").read_text() if Path("output/prompts_batch.json").exists() else "[]"
@@ -85,7 +85,7 @@ def main():
                                 shutil.copy2(item, target)
                             print(f"  Copied {item.name} -> {target} ({e})")
 
-    if GENERATE_MUSIC_B64 != "__GENERATE_MUSIC_B64_PLACEHOLDER__":
+    if not GENERATE_MUSIC_B64.startswith("__"):
         (WORK_DIR / "generate_music.py").write_bytes(base64.b64decode(GENERATE_MUSIC_B64.encode("ascii")))
     elif Path("generate_music.py").exists():
         (WORK_DIR / "generate_music.py").write_text(Path("generate_music.py").read_text())
