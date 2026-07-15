@@ -28,12 +28,18 @@ jobs:
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_KEY }}
         run: |
           mkdir -p ~/.kaggle
           echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
-          chmod 600 ~/.kaggle/kaggle.json
+          echo "$KAGGLE_KEY" > ~/.kaggle/access_token
+          chmod 600 ~/.kaggle/kaggle.json ~/.kaggle/access_token
 
       - name: 4. Bundle kernel + base64 prompts, verify AST, push to Kaggle GPU
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_KEY }}
         run: |
           cp generate/generate_music.py kaggle/generate_music.py
           python - <<'PY'
