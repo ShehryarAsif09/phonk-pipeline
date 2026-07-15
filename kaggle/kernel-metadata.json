@@ -1,5 +1,5 @@
 {
-  "id": "YOUR_KAGGLE_USERNAME/phonk-batch-generator",
+  "id": "shehryarasif/phonk-batch-generator",
   "title": "Phonk Batch Generator",
   "code_file": "kaggle_kernel.py",
   "language": "python",
@@ -7,7 +7,9 @@
   "is_private": true,
   "enable_gpu": true,
   "enable_internet": true,
-  "dataset_sources": [],
+  "dataset_sources": [
+    "shehryarasif/acestep-v15-checkpoints"
+  ],
   "competition_sources": [],
   "kernel_sources": []
 }
