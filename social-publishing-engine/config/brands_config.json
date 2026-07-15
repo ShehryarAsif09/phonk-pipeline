@@ -1,0 +1,72 @@
+{
+  "phonk_pipeline": {
+    "brand_name": "Antigravity Phonk Factory",
+    "active_platforms": {
+      "youtube": true,
+      "instagram": true,
+      "facebook": true,
+      "tiktok": true,
+      "linkedin": false,
+      "routenote": true
+    },
+    "default_bpm": 155,
+    "hashtags": {
+      "core": "#phonk #phonkmusic #gymphonk #driftphonk #phonkbeat",
+      "instagram": "#gymmotivation #phonkedit #carphonk #bodybuilding #darkphonk #bassboosted",
+      "youtube": "#shorts #shortvideo #phonkmusic #driftphonk #phonk2026",
+      "tiktok": "#fyp #viral #phonk #gymtok #cartok #phonktok #phonkdrip"
+    }
+  },
+  "publixion": {
+    "brand_name": "Publixion Media",
+    "active_platforms": {
+      "youtube": true,
+      "instagram": true,
+      "facebook": false,
+      "tiktok": false,
+      "linkedin": true,
+      "routenote": false
+    },
+    "hashtags": {
+      "core": "#publixion #publishing #contentcreator #digitalmedia #growth",
+      "instagram": "#media #digitalstrategy #contentmarketing #creators",
+      "youtube": "#shorts #media #contentcreation #business",
+      "linkedin": "#DigitalPublishing #MediaGrowth #ContentStrategy #Publixion"
+    }
+  },
+  "myfitnessleap": {
+    "brand_name": "My Fitness Leap",
+    "active_platforms": {
+      "youtube": true,
+      "instagram": true,
+      "facebook": true,
+      "tiktok": true,
+      "linkedin": true,
+      "routenote": false
+    },
+    "hashtags": {
+      "core": "#fitness #health #workout #gym #fitnessmotivation",
+      "instagram": "#fitfam #gymlife #training #bodybuilding #healthylifestyle",
+      "youtube": "#shorts #fitness #gym #workoutmotivation #health",
+      "tiktok": "#gymtok #fitnesstok #workout #health #fyp",
+      "linkedin": "#CorporateWellness #HealthAndFitness #PeakPerformance #Leadership"
+    }
+  },
+  "neurostackos": {
+    "brand_name": "NeuroStack OS",
+    "active_platforms": {
+      "youtube": true,
+      "instagram": false,
+      "facebook": false,
+      "tiktok": true,
+      "linkedin": true,
+      "routenote": false
+    },
+    "hashtags": {
+      "core": "#nootropics #biohacking #neuroscience #focus #productivity",
+      "youtube": "#shorts #biohacking #productivity #brainperformance #neuroscience",
+      "tiktok": "#biohack #focus #adhd #mentalclarity #brainpower #fyp",
+      "linkedin": "#Biohacking #Neuroscience #CognitivePerformance #HighPerformance #Focus"
+    }
+  }
+}

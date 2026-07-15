@@ -1,0 +1,3 @@
+{$DOMAIN_NAME:hub.yourdomain.com} {
+    reverse_proxy n8n:5678
+}

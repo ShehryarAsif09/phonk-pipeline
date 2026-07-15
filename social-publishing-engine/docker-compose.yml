@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  caddy:
+    image: caddy:latest
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME:-hub.yourdomain.com}
+    depends_on:
+      - n8n
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=${DOMAIN_NAME:-hub.yourdomain.com}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://${DOMAIN_NAME:-hub.yourdomain.com}/
+      - GENERIC_TIMEZONE=UTC
+      - EXECUTIONS_TIMEOUT=3600
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - /opt/shared_videos:/data/videos
+      - ./config:/data/config
+
+  browser-automation:
+    build:
+      context: ./bot_engine
+      dockerfile: Dockerfile
+    image: social-browser-engine:latest
+    restart: always
+    volumes:
+      - ./bot_engine:/app
+      - /opt/shared_videos:/data/videos
+      - /opt/cookies:/data/cookies
+    working_dir: /app
+    command: tail -f /dev/null # Keeps container alive waiting for n8n docker exec commands
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: always
+    command: tunnel --no-autoupdate --url http://n8n:5678
+    depends_on:
+      - n8n
+
+volumes:
+  caddy_data:
+  n8n_data:
