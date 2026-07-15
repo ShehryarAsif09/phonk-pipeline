@@ -53,6 +53,13 @@ def main():
 
     if not REPO_DIR.exists():
         sh(f"git clone --depth 1 https://github.com/ace-step/ACE-Step-1.5.git {REPO_DIR}")
+        req_file = REPO_DIR / "requirements.txt"
+        if req_file.exists():
+            clean_lines = [
+                line for line in req_file.read_text().splitlines()
+                if not any(pkg in line.lower() for pkg in ["flash-attn", "torch==", "torchvision", "torchaudio"])
+            ]
+            req_file.write_text("\n".join(clean_lines))
         sh(f"pip install -q -r {REPO_DIR}/requirements.txt")
 
     # Phase 4: Checkpoint caching from private Kaggle Dataset under /kaggle/input
