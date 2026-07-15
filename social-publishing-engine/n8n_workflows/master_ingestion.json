@@ -1,0 +1,139 @@
+{
+  "name": "Tier 1: Master Ingestion & Brand Controller",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "phonk-release",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "GitHub Webhook Receiver",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const payload = $input.item.json.body || $input.item.json;\nconst assets = payload.assets || [];\nconst zipAsset = assets.find(a => a.name && a.name.endsWith('.zip'));\n\nif (!zipAsset) {\n  return [{ json: { error: 'No .zip asset found in release payload', raw: payload } }];\n}\n\nreturn [{\n  json: {\n    release_tag: payload.tag_name || 'v1.0.0',\n    zip_url: zipAsset.browser_download_url,\n    brand_id: payload.brand_id || 'phonk_pipeline',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "name": "Parse GitHub Release Assets",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "command": "mkdir -p /data/videos/batch_${$json[\"release_tag\"]} && curl -L \"${$json[\"zip_url\"]}\" -o /data/videos/batch_${$json[\"release_tag\"]}/batch.zip && unzip -o /data/videos/batch_${$json[\"release_tag\"]}/batch.zip -d /data/videos/batch_${$json[\"release_tag\"]}/ && rm /data/videos/batch_${$json[\"release_tag\"]}/batch.zip"
+      },
+      "name": "Download & Unpack Phonk Batch",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const fs = require('fs');\nconst batchDir = `/data/videos/batch_${$input.item.json.release_tag}`;\nlet metadata = [];\n\ntry {\n  const rawMeta = fs.readFileSync(`${batchDir}/metadata.json`, 'utf8');\n  metadata = JSON.parse(rawMeta);\n} catch (e) {\n  // Fallback scan of wav files if metadata.json not found\n  const files = fs.readdirSync(batchDir).filter(f => f.endsWith('.wav'));\n  metadata = files.map((f, i) => ({\n    slug: f.replace('.wav', ''),\n    brand_id: $input.item.json.brand_id,\n    bpm: 155,\n    audio_path: `${batchDir}/${f}`,\n    cover_path: fs.existsSync(`${batchDir}/covers/${f.replace('.wav', '.png')}`) ? `${batchDir}/covers/${f.replace('.wav', '.png')}` : null\n  }));\n}\n\nreturn metadata.map(item => ({\n  json: {\n    ...item,\n    brand_id: item.brand_id || $input.item.json.brand_id || 'phonk_pipeline',\n    batch_dir: batchDir\n  }\n}));"
+      },
+      "name": "Load Metadata & Split Tracks",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "command": "ffmpeg -y -loop 1 -i \"${$json[\"cover_path\"] || '/data/videos/default_cover.png'}\" -i \"${$json[\"audio_path\"]}\" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest -vf \"scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920\" \"${$json[\"batch_dir\"]}/${$json[\"slug\"]}.mp4\""
+      },
+      "name": "Render 60s Vertical Video (FFmpeg)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json;\nconst brandId = item.brand_id || \"phonk_pipeline\";\nconst rawCaption = item.caption || \"Check out this new release!\";\nconst title = (item.slug || \"New Track\").replace(/_/g, ' ').toUpperCase();\n\nconst brandsConfig = {\n  phonk_pipeline: { core: \"#phonk #phonkmusic #gymphonk #driftphonk #phonkbeat\", instagram: \"#gymmotivation #carphonk #bodybuilding\", youtube: \"#shorts #shortvideo #phonk2026\", tiktok: \"#fyp #viral #phonk #gymtok #cartok\" },\n  publixion: { core: \"#publixion #publishing #contentcreator #growth\", linkedin: \"#DigitalPublishing #MediaGrowth #ContentStrategy\" },\n  myfitnessleap: { core: \"#fitness #health #workout #gym #fitnessmotivation\", tiktok: \"#gymtok #fitnesstok #fyp\" },\n  neurostackos: { core: \"#nootropics #biohacking #neuroscience #focus\", linkedin: \"#Biohacking #Neuroscience #CognitivePerformance\" }\n};\n\nconst tags = brandsConfig[brandId] || brandsConfig.phonk_pipeline;\n\nreturn {\n  json: {\n    ...item,\n    video_path: `${item.batch_dir}/${item.slug}.mp4`,\n    normalized_captions: {\n      youtube: `${title} | ${tags.youtube}\\n\\n${rawCaption}\\n\\n${tags.core}`,\n      instagram: `🔥 ${title}\\n${rawCaption}\\n.\\n.\\n.\\n.\\n.\\n${tags.core} ${tags.instagram || ''}`,\n      tiktok: `⚡ ${title} ⚡\\n${rawCaption}\\n\\n${tags.core} ${tags.tiktok || ''}`,\n      facebook: `${title} - ${rawCaption}\\n\\n${tags.core}`,\n      linkedin: `${title}\\n\\n${rawCaption}\\n\\n${tags.linkedin || tags.core}`\n    }\n  }\n};"
+      },
+      "name": "Dynamic Caption Normalizer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "workflowId": "platform_dispatcher_workflow_id"
+      },
+      "name": "Dispatch to Tier 2 (Drip Queue)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1560, 300]
+    }
+  ],
+  "connections": {
+    "GitHub Webhook Receiver": {
+      "main": [
+        [
+          {
+            "node": "Parse GitHub Release Assets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse GitHub Release Assets": {
+      "main": [
+        [
+          {
+            "node": "Download & Unpack Phonk Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download & Unpack Phonk Batch": {
+      "main": [
+        [
+          {
+            "node": "Load Metadata & Split Tracks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Metadata & Split Tracks": {
+      "main": [
+        [
+          {
+            "node": "Render 60s Vertical Video (FFmpeg)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render 60s Vertical Video (FFmpeg)": {
+      "main": [
+        [
+          {
+            "node": "Dynamic Caption Normalizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dynamic Caption Normalizer": {
+      "main": [
+        [
+          {
+            "node": "Dispatch to Tier 2 (Drip Queue)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
