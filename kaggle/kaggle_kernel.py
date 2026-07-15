@@ -31,6 +31,7 @@ import zipfile
 from pathlib import Path
 
 PROMPTS_B64 = "__PROMPTS_B64_PLACEHOLDER__"
+GENERATE_MUSIC_B64 = "__GENERATE_MUSIC_B64_PLACEHOLDER__"
 
 WORK_DIR = Path("/kaggle/working")
 REPO_DIR = WORK_DIR / "ACE-Step-1.5"
@@ -84,7 +85,11 @@ def main():
                                 shutil.copy2(item, target)
                             print(f"  Copied {item.name} -> {target} ({e})")
 
-    sys.path.insert(0, str(Path(__file__).parent))
+    if GENERATE_MUSIC_B64 != "__GENERATE_MUSIC_B64_PLACEHOLDER__":
+        (WORK_DIR / "generate_music.py").write_bytes(base64.b64decode(GENERATE_MUSIC_B64.encode("ascii")))
+    elif Path("generate_music.py").exists():
+        (WORK_DIR / "generate_music.py").write_text(Path("generate_music.py").read_text())
+    sys.path.insert(0, str(WORK_DIR))
     import generate_music as gm
     gm.run(str(prompts_path), str(AUDIO_DIR), str(REPO_DIR))
 

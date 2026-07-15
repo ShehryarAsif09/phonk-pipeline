@@ -47,11 +47,14 @@ jobs:
           from pathlib import Path
           prompts_json = Path("output/prompts_batch.json").read_bytes()
           prompts_b64 = base64.b64encode(prompts_json).decode("ascii")
+          gm_code = Path("generate/generate_music.py").read_bytes()
+          gm_b64 = base64.b64encode(gm_code).decode("ascii")
           kernel = Path("kaggle/kaggle_kernel.py").read_text()
           kernel = kernel.replace("__PROMPTS_B64_PLACEHOLDER__", prompts_b64)
+          kernel = kernel.replace("__GENERATE_MUSIC_B64_PLACEHOLDER__", gm_b64)
           Path("kaggle/kaggle_kernel.py").write_text(kernel)
           py_compile.compile("kaggle/kaggle_kernel.py", doraise=True)
-          print("Base64 prompt injection AST verified.")
+          print("Base64 prompt & generate_music injection AST verified.")
           PY
           # Update kernel metadata ID with current username if needed
           python - <<'PY'
