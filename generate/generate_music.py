@@ -83,10 +83,10 @@ def run(prompts_path: str, out_dir: str, acestep_repo_root: str, config_path: st
         except Exception as e:
             logger.warning(f"acestep download_5hz_lm fallback triggered ({e}), using huggingface_hub snapshot_download...")
             from huggingface_hub import snapshot_download
+            # The 5Hz LM lives in its OWN repo, not inside ACE-Step/Ace-Step1.5
             snapshot_download(
-                repo_id="ACE-Step/Ace-Step1.5",
-                allow_patterns=["*acestep-5Hz-lm-0.6B*"],
-                local_dir=str(Path(checkpoint_dir).parent),
+                repo_id="ACE-Step/acestep-5Hz-lm-0.6B",
+                local_dir=str(lm_dir),
             )
 
     logger.info("Initializing LLM handler (0.6B)...")
