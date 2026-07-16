@@ -63,11 +63,19 @@ def main():
             req_file.write_text("\n".join(clean_lines))
         sh(f"pip install -q -r {REPO_DIR}/requirements.txt")
 
+    # Detect legacy P100 (sm_60) and reinstall ABI-matched torch 2.4.
+    # We MUST run generate_music in a subprocess after this because the
+    # current Python process already has torch 2.6's C++ symbols loaded
+    # in memory — importing torchaudio 2.4 in-process causes an ABI
+    # mismatch (undefined symbol _ZNK5torch8autograd4Node4nameEv).
+    _needs_subprocess = False
     try:
         import torch
         if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] < 7:
-            print(f"Legacy GPU detected (compute capability {torch.cuda.get_device_capability()}). Installing exact ABI-matched PyTorch 2.4 + torchaudio 2.4 for sm_60 (Tesla P100)...")
+            cap = torch.cuda.get_device_capability()
+            print(f"Legacy GPU detected (compute capability {cap}). Installing ABI-matched PyTorch 2.4 for sm_60...")
             sh("pip install -q --force-reinstall torch==2.4.0+cu121 torchvision==0.19.0+cu121 torchaudio==2.4.0+cu121 --index-url https://download.pytorch.org/whl/cu121")
+            _needs_subprocess = True
     except Exception as e:
         print(f"GPU check notice: {e}")
 
@@ -93,13 +101,26 @@ def main():
                                 shutil.copy2(item, target)
                             print(f"  Copied {item.name} -> {target} ({e})")
 
+    # Write generate_music.py to working directory
+    gm_path = WORK_DIR / "generate_music.py"
     if not GENERATE_MUSIC_B64.startswith("__"):
-        (WORK_DIR / "generate_music.py").write_bytes(base64.b64decode(GENERATE_MUSIC_B64.encode("ascii")))
+        gm_path.write_bytes(base64.b64decode(GENERATE_MUSIC_B64.encode("ascii")))
     elif Path("generate_music.py").exists():
-        (WORK_DIR / "generate_music.py").write_text(Path("generate_music.py").read_text())
-    sys.path.insert(0, str(WORK_DIR))
-    import generate_music as gm
-    gm.run(str(prompts_path), str(AUDIO_DIR), str(REPO_DIR))
+        gm_path.write_text(Path("generate_music.py").read_text())
+
+    if _needs_subprocess:
+        # Fresh Python process loads the correct torch 2.4 .so from disk
+        print("Running generate_music.py in subprocess (fresh torch ABI)...")
+        subprocess.run(
+            [sys.executable, "-c",
+             f"import sys; sys.path.insert(0, '{WORK_DIR}'); sys.path.insert(0, '{REPO_DIR}'); "
+             f"import generate_music as gm; gm.run('{prompts_path}', '{AUDIO_DIR}', '{REPO_DIR}')"],
+            check=True,
+        )
+    else:
+        sys.path.insert(0, str(WORK_DIR))
+        import generate_music as gm
+        gm.run(str(prompts_path), str(AUDIO_DIR), str(REPO_DIR))
 
     zip_path = WORK_DIR / "phonk_audio_batch.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -110,3 +131,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
