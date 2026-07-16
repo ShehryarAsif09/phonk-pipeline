@@ -73,6 +73,22 @@ def run(prompts_path: str, out_dir: str, acestep_repo_root: str, config_path: st
         sys.exit(1)
     logger.info(f"DiT loaded in {time.time() - t0:.1f}s")
 
+    logger.info("Checking and ensuring 5Hz LM (0.6B) model is downloaded...")
+    lm_dir = Path(checkpoint_dir) / "acestep-5Hz-lm-0.6B"
+    if not lm_dir.exists():
+        logger.info(f"LM directory not found at {lm_dir}. Downloading from HuggingFace Hub...")
+        try:
+            from acestep.model_downloader import download_5hz_lm
+            download_5hz_lm("0.6B", str(checkpoint_dir))
+        except Exception as e:
+            logger.warning(f"acestep download_5hz_lm fallback triggered ({e}), using huggingface_hub snapshot_download...")
+            from huggingface_hub import snapshot_download
+            snapshot_download(
+                repo_id="ACE-Step/Ace-Step1.5",
+                allow_patterns=["*acestep-5Hz-lm-0.6B*"],
+                local_dir=str(Path(checkpoint_dir).parent),
+            )
+
     logger.info("Initializing LLM handler (0.6B)...")
     t0 = time.time()
     llm_handler = LLMHandler()
