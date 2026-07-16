@@ -67,7 +67,7 @@ jobs:
 
           print(f"Parsed status: '{status}'")
           out_file = os.environ.get("GITHUB_OUTPUT", "")
-          if status == "complete":
+          if "complete" in status:
               print("Kernel is complete! Proceeding to download and package.")
               if out_file:
                   with open(out_file, "a") as f:
