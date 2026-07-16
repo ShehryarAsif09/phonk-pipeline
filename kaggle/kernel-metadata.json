@@ -6,6 +6,7 @@
   "kernel_type": "script",
   "is_private": true,
   "enable_gpu": true,
+  "gpu_type": "T4",
   "enable_internet": true,
   "dataset_sources": [
     "shehryarasif/acestep-v15-checkpoints"

@@ -44,6 +44,14 @@ def sh(cmd: str):
 
 
 def main():
+    try:
+        import torch
+        if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] < 7:
+            print(f"Legacy GPU detected (compute capability {torch.cuda.get_device_capability()}). Installing PyTorch 2.4 with sm_60 (Tesla P100) support...")
+            sh("pip install -q --force-reinstall torch==2.4.0+cu121 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121")
+    except Exception as e:
+        print(f"GPU check notice: {e}")
+
     AUDIO_DIR.mkdir(parents=True, exist_ok=True)
     prompts_path = WORK_DIR / "prompts_batch.json"
     if not PROMPTS_B64.startswith("__"):
