@@ -75,6 +75,10 @@ def main():
             cap = torch.cuda.get_device_capability()
             print(f"Legacy GPU detected (compute capability {cap}). Installing ABI-matched PyTorch 2.4 for sm_60...")
             sh("pip install -q --force-reinstall torch==2.4.0+cu121 torchvision==0.19.0+cu121 torchaudio==2.4.0+cu121 --index-url https://download.pytorch.org/whl/cu121")
+            # Kaggle's pre-installed diffusers 0.34+ uses @_custom_op with PEP 604
+            # union annotations (float | None) that torch 2.4's infer_schema rejects.
+            # Pin to 0.31.0 which has AutoencoderOobleck but predates attention_dispatch.py.
+            sh("pip install -q 'diffusers==0.31.0'")
             _needs_subprocess = True
     except Exception as e:
         print(f"GPU check notice: {e}")
