@@ -126,6 +126,10 @@ def main():
         import generate_music as gm
         gm.run(str(prompts_path), str(AUDIO_DIR), str(REPO_DIR))
 
+    if REPO_DIR.exists():
+        import shutil
+        shutil.rmtree(REPO_DIR, ignore_errors=True)
+
     zip_path = WORK_DIR / "phonk_audio_batch.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for f in AUDIO_DIR.rglob("*"):

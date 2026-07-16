@@ -94,7 +94,7 @@ jobs:
           KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_KEY }}
         run: |
           SLUG=$(python -c "import json, os; meta = json.load(open('kaggle/kernel-metadata.json')); print(meta['id'].replace('YOUR_KAGGLE_USERNAME', os.environ.get('KAGGLE_USERNAME', 'YOUR_KAGGLE_USERNAME')))")
-          kaggle kernels output "$SLUG" -p output/kaggle_download/
+          kaggle kernels output "$SLUG" -p output/kaggle_download/ --file-pattern "phonk_audio_batch.zip"
           mkdir -p output/audio
           unzip -o output/kaggle_download/phonk_audio_batch.zip -d output/audio_tmp || true
           find output/audio_tmp -name "*.wav" -exec mv {} output/audio/ \;
