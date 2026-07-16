@@ -44,14 +44,6 @@ def sh(cmd: str):
 
 
 def main():
-    try:
-        import torch
-        if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] < 7:
-            print(f"Legacy GPU detected (compute capability {torch.cuda.get_device_capability()}). Installing PyTorch 2.4 with sm_60 (Tesla P100) support...")
-            sh("pip install -q --force-reinstall torch==2.4.0+cu121 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121")
-    except Exception as e:
-        print(f"GPU check notice: {e}")
-
     AUDIO_DIR.mkdir(parents=True, exist_ok=True)
     prompts_path = WORK_DIR / "prompts_batch.json"
     if not PROMPTS_B64.startswith("__"):
@@ -70,6 +62,14 @@ def main():
             ]
             req_file.write_text("\n".join(clean_lines))
         sh(f"pip install -q -r {REPO_DIR}/requirements.txt")
+
+    try:
+        import torch
+        if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] < 7:
+            print(f"Legacy GPU detected (compute capability {torch.cuda.get_device_capability()}). Installing exact ABI-matched PyTorch 2.4 + torchaudio 2.4 for sm_60 (Tesla P100)...")
+            sh("pip install -q --force-reinstall torch==2.4.0+cu121 torchvision==0.19.0+cu121 torchaudio==2.4.0+cu121 --index-url https://download.pytorch.org/whl/cu121")
+    except Exception as e:
+        print(f"GPU check notice: {e}")
 
     # Phase 4: Checkpoint caching from private Kaggle Dataset under /kaggle/input
     checkpoints_dest = REPO_DIR / "checkpoints"
