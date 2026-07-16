@@ -41,7 +41,7 @@
       "name": "Check YouTube Enabled",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [900, 180]
+      "position": [900, 100]
     },
     {
       "parameters": {
@@ -57,6 +57,81 @@
         "conditions": {
           "string": [
             {
+              "value1": "={{ $json[\"active_targets\"].includes('instagram') }}",
+              "value2": "true"
+            }
+          ]
+        }
+      },
+      "name": "Check Instagram Enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [900, 220]
+    },
+    {
+      "parameters": {
+        "workflowId": "executor_instagram_id"
+      },
+      "name": "Execute Instagram Upload",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1120, 220]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json[\"active_targets\"].includes('facebook') }}",
+              "value2": "true"
+            }
+          ]
+        }
+      },
+      "name": "Check Facebook Enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [900, 340]
+    },
+    {
+      "parameters": {
+        "workflowId": "executor_facebook_id"
+      },
+      "name": "Execute Facebook Upload",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1120, 340]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json[\"active_targets\"].includes('linkedin') }}",
+              "value2": "true"
+            }
+          ]
+        }
+      },
+      "name": "Check LinkedIn Enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [900, 460]
+    },
+    {
+      "parameters": {
+        "workflowId": "executor_linkedin_id"
+      },
+      "name": "Execute LinkedIn Upload",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1120, 460]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
               "value1": "={{ $json[\"active_targets\"].includes('tiktok') }}",
               "value2": "true"
             }
@@ -66,16 +141,16 @@
       "name": "Check TikTok Enabled",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [900, 300]
+      "position": [900, 580]
     },
     {
       "parameters": {
-        "command": "docker exec -i social-browser-engine-1 python /app/tiktok_uploader.py --brand \"${$json[\"brand_id\"]}\" --file \"${$json[\"video_path\"]}\" --caption \"${$json[\"normalized_captions\"][\"tiktok\"]}\""
+        "workflowId": "executor_tiktok_id"
       },
-      "name": "Execute TikTok Bot (Playwright)",
-      "type": "n8n-nodes-base.executeCommand",
+      "name": "Execute TikTok Upload",
+      "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
-      "position": [1120, 300]
+      "position": [1120, 580]
     },
     {
       "parameters": {
@@ -91,7 +166,7 @@
       "name": "Check RouteNote Enabled",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [900, 420]
+      "position": [900, 700]
     },
     {
       "parameters": {
@@ -100,7 +175,7 @@
       "name": "Execute RouteNote $0 Bot",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [1120, 420]
+      "position": [1120, 700]
     },
     {
       "parameters": {
@@ -110,7 +185,7 @@
       "name": "72-Minute Algorithmic Drip Wait",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1,
-      "position": [1360, 300]
+      "position": [1360, 340]
     }
   ],
   "connections": {
@@ -145,6 +220,21 @@
             "index": 0
           },
           {
+            "node": "Check Instagram Enabled",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Facebook Enabled",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check LinkedIn Enabled",
+            "type": "main",
+            "index": 0
+          },
+          {
             "node": "Check TikTok Enabled",
             "type": "main",
             "index": 0
@@ -168,11 +258,44 @@
         ]
       ]
     },
+    "Check Instagram Enabled": {
+      "main": [
+        [
+          {
+            "node": "Execute Instagram Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Facebook Enabled": {
+      "main": [
+        [
+          {
+            "node": "Execute Facebook Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check LinkedIn Enabled": {
+      "main": [
+        [
+          {
+            "node": "Execute LinkedIn Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Check TikTok Enabled": {
       "main": [
         [
           {
-            "node": "Execute TikTok Bot (Playwright)",
+            "node": "Execute TikTok Upload",
             "type": "main",
             "index": 0
           }
@@ -201,7 +324,40 @@
         ]
       ]
     },
-    "Execute TikTok Bot (Playwright)": {
+    "Execute Instagram Upload": {
+      "main": [
+        [
+          {
+            "node": "72-Minute Algorithmic Drip Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Facebook Upload": {
+      "main": [
+        [
+          {
+            "node": "72-Minute Algorithmic Drip Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute LinkedIn Upload": {
+      "main": [
+        [
+          {
+            "node": "72-Minute Algorithmic Drip Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute TikTok Upload": {
       "main": [
         [
           {

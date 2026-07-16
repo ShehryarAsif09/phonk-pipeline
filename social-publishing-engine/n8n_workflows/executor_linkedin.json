@@ -1,0 +1,122 @@
+{
+  "name": "Sub-Workflow: LinkedIn Professional Video & Post Publisher",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/v2/assets?action=registerUpload",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "linkedInOAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "registerUploadRequest",
+              "value": "={{ { \"recipes\": [\"urn:li:digitalmediaRecipe:feedshare-video\"], \"owner\": \"urn:li:person:\" + $json[\"linkedin_person_id\"], \"serviceRelationships\": [{ \"relationshipType\": \"OWNER\", \"identifier\": \"urn:li:userGeneratedContent\" }] } }}"
+            }
+          ]
+        }
+      },
+      "name": "Step 1: Register Video Upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 300],
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "={{ $json[\"brand_id\"] }}_linkedin_oauth",
+          "name": "LinkedIn OAuth for {{ $json[\"brand_id\"] }}"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/v2/ugcPosts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "linkedInOAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "author",
+              "value": "={{ \"urn:li:person:\" + $json[\"linkedin_person_id\"] }}"
+            },
+            {
+              "name": "lifecycleState",
+              "value": "PUBLISHED"
+            },
+            {
+              "name": "specificContent",
+              "value": "={{ { \"com.linkedin.ugc.ShareContent\": { \"shareCommentary\": { \"text\": $json[\"normalized_captions\"]?.[\"linkedin\"] || $json[\"title\"] + '\\n\\nNew release now live on all major streaming platforms.' }, \"shareMediaCategory\": \"VIDEO\", \"media\": [{ \"status\": \"READY\", \"media\": $json[\"asset\"] }] } } }}"
+            },
+            {
+              "name": "visibility",
+              "value": "={{ { \"com.linkedin.ugc.MemberNetworkVisibility\": \"PUBLIC\" } }}"
+            }
+          ]
+        }
+      },
+      "name": "Step 2: Publish LinkedIn Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [720, 300],
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "={{ $json[\"brand_id\"] }}_linkedin_oauth",
+          "name": "LinkedIn OAuth for {{ $json[\"brand_id\"] }}"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    platform: 'linkedin',\n    status: 'success',\n    postId: $input.item.json.id,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "name": "Format Success Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Step 1: Register Video Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 1: Register Video Upload": {
+      "main": [
+        [
+          {
+            "node": "Step 2: Publish LinkedIn Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 2: Publish LinkedIn Post": {
+      "main": [
+        [
+          {
+            "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

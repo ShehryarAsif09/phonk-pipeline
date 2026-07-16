@@ -1,0 +1,54 @@
+{
+  "name": "Sub-Workflow: TikTok Video Uploader (Playwright Headless)",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "command": "={{ 'docker exec -i social-browser-engine-1 python /app/tiktok_uploader.py --brand \"' + $json[\"brand_id\"] + '\" --file \"' + $json[\"video_path\"] + '\" --caption \"' + ($json[\"normalized_captions\"]?.[\"tiktok\"] || $json[\"title\"] + ' #phonk #gymphonk #fyp') + '\"' }}"
+      },
+      "name": "Run Playwright TikTok Bot",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const output = $input.item.json.stdout || '';\nconst success = output.includes('SUCCESS: Video successfully published') || output.includes('SUCCESS');\n\nreturn [{\n  json: {\n    platform: 'tiktok',\n    status: success ? 'success' : 'failed',\n    log: output,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "name": "Format Success Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Run Playwright TikTok Bot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Playwright TikTok Bot": {
+      "main": [
+        [
+          {
+            "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "name": "Sub-Workflow: YouTube Video & Shorts Uploader",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $json[\"slug\"] || $json[\"title\"] }}",
+        "description": "={{ $json[\"normalized_captions\"]?.[\"youtube\"] || $json[\"title\"] + '\\n\\n#phonk #gym #workout #shorts' }}",
+        "categoryId": "10",
+        "privacyStatus": "public",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "options": {
+          "tags": "phonk, gym phonk, drift phonk, workout music, aggressive phonk, shorts"
+        }
+      },
+      "name": "YouTube Upload",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [480, 300],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "={{ $json[\"brand_id\"] }}_youtube_oauth",
+          "name": "YouTube account for {{ $json[\"brand_id\"] }}"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    platform: 'youtube',\n    status: 'success',\n    videoId: $input.item.json.id,\n    url: `https://www.youtube.com/watch?v=${$input.item.json.id}`,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "name": "Format Success Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "YouTube Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YouTube Upload": {
+      "main": [
+        [
+          {
+            "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

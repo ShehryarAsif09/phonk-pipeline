@@ -1,0 +1,139 @@
+{
+  "name": "Sub-Workflow: Instagram Reels & Video Uploader",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://graph.facebook.com/v19.0/' + $json[\"instagram_account_id\"] + '/media' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "media_type",
+              "value": "REELS"
+            },
+            {
+              "name": "video_url",
+              "value": "={{ $json[\"public_video_url\"] }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json[\"normalized_captions\"]?.[\"instagram\"] || $json[\"title\"] + '\\n\\n#phonk #gymphonk #workoutmusic #reels' }}"
+            }
+          ]
+        }
+      },
+      "name": "Step 1: Create Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 300],
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "={{ $json[\"brand_id\"] }}_facebook_graph",
+          "name": "Facebook Graph API for {{ $json[\"brand_id\"] }}"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "name": "Wait for Container Processing",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://graph.facebook.com/v19.0/' + $json[\"instagram_account_id\"] + '/media_publish' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $json[\"id\"] }}"
+            }
+          ]
+        }
+      },
+      "name": "Step 2: Publish Reel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [920, 300],
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "={{ $json[\"brand_id\"] }}_facebook_graph",
+          "name": "Facebook Graph API for {{ $json[\"brand_id\"] }}"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    platform: 'instagram',\n    status: 'success',\n    mediaId: $input.item.json.id,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "name": "Format Success Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1140, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Step 1: Create Container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 1: Create Container": {
+      "main": [
+        [
+          {
+            "node": "Wait for Container Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Container Processing": {
+      "main": [
+        [
+          {
+            "node": "Step 2: Publish Reel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 2: Publish Reel": {
+      "main": [
+        [
+          {
+            "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

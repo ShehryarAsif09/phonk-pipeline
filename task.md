@@ -3,7 +3,7 @@
 ## Phase 1: Kaggle GPU Phonk Generation Pipeline (Completed & Live)
 - [x] Fix Kaggle CLI authentication and pre-install `requirements.txt` build timeouts (`commit 3c6b06d`).
 - [x] Fix `ModuleNotFoundError: No module named 'generate_music'` inside script kernel by inlining code via base64 (`commit 6763f5d`).
-- [x] Verify Kernel Version 4 execution (`Running for 175.4s+`) rendering initial 20 unique Phonk tracks (`gym_phonk`, `drift_phonk`, `rage_phonk`).
+- [x] Verify Kernel execution (`Running on P100 / T4`) and successfully generate 20 unique Phonk tracks (`gym_phonk`, `drift_phonk`, `rage_phonk`).
 
 ---
 
@@ -31,13 +31,13 @@
 
 ## Phase 5: n8n Hierarchical Workflows (`n8n_workflows/`)
 - [x] Create `n8n_workflows/caption_normalizer.js` Code Node script formatting `metadata.json` tailored for 5 platforms (`YouTube #shorts` in first 80 chars, `Instagram` spaced tags, `TikTok` hooks, `Facebook` clean prompts, `LinkedIn` professional summaries).
-- [/] **In Progress:** Create importable JSON templates for Tier 1 (`master_ingestion.json`) and Tier 2 (`platform_dispatcher.json` with the **72-Minute Drip-Feed Wait Node**).
-- [ ] Create 5 Platform Executor Sub-Workflows (`executor_youtube.json`, `executor_instagram.json`, `executor_facebook.json`, `executor_linkedin.json`, `executor_tiktok.json`).
+- [x] Create importable JSON templates for Tier 1 (`master_ingestion.json`) and Tier 2 (`platform_dispatcher.json` with the **72-Minute Drip-Feed Wait Node**).
+- [x] Create 5 Platform Executor Sub-Workflows (`executor_youtube.json`, `executor_instagram.json`, `executor_facebook.json`, `executor_linkedin.json`, `executor_tiktok.json`).
 
 ---
 
 ## Phase 6: Package & Publish Phonk Batch (Workflow B) (Next Step)
-- [/] **Waiting for Kaggle Version 4 Completion (`~12-15 mins`):** Await kernel render completion (`Output ~150+ MB`).
+- [x] **Kaggle Version 11 Completed:** Successfully rendered all 20 `.wav` Phonk tracks on GPU.
 - [ ] Trigger **Package and Publish Phonk Batch (Workflow B)** on GitHub Actions to download `audio_out/*.wav` + `covers/*.png` and attach `phonk-batch-xxxxx.zip` to GitHub Releases.
 
 ---

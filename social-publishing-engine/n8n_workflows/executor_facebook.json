@@ -1,0 +1,156 @@
+{
+  "name": "Sub-Workflow: Facebook Page Reels & Video Uploader",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://graph.facebook.com/v19.0/' + $json[\"facebook_page_id\"] + '/video_reels' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "upload_phase",
+              "value": "start"
+            }
+          ]
+        }
+      },
+      "name": "Step 1: Start Reel Upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 300],
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "={{ $json[\"brand_id\"] }}_facebook_graph",
+          "name": "Facebook Graph API for {{ $json[\"brand_id\"] }}"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://rupload.facebook.com/video-upload/v19.0/' + $json[\"video_id\"] }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'OAuth ' + $json[\"page_access_token\"] }}"
+            },
+            {
+              "name": "file_url",
+              "value": "={{ $json[\"public_video_url\"] }}"
+            }
+          ]
+        }
+      },
+      "name": "Step 2: Transfer Video Bytes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://graph.facebook.com/v19.0/' + $json[\"facebook_page_id\"] + '/video_reels' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "upload_phase",
+              "value": "finish"
+            },
+            {
+              "name": "video_id",
+              "value": "={{ $json[\"video_id\"] }}"
+            },
+            {
+              "name": "video_state",
+              "value": "PUBLISHED"
+            },
+            {
+              "name": "description",
+              "value": "={{ $json[\"normalized_captions\"]?.[\"facebook\"] || $json[\"title\"] + '\\n\\nListen to full track across all major platforms!' }}"
+            }
+          ]
+        }
+      },
+      "name": "Step 3: Publish Facebook Reel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [920, 300],
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "={{ $json[\"brand_id\"] }}_facebook_graph",
+          "name": "Facebook Graph API for {{ $json[\"brand_id\"] }}"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{\n  json: {\n    platform: 'facebook',\n    status: 'success',\n    videoId: $input.item.json.success ? $input.item.json.video_id : 'published',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "name": "Format Success Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1140, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Step 1: Start Reel Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 1: Start Reel Upload": {
+      "main": [
+        [
+          {
+            "node": "Step 2: Transfer Video Bytes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 2: Transfer Video Bytes": {
+      "main": [
+        [
+          {
+            "node": "Step 3: Publish Facebook Reel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 3: Publish Facebook Reel": {
+      "main": [
+        [
+          {
+            "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
