@@ -29,23 +29,23 @@
 
 ---
 
-## Phase 5: n8n Hierarchical Workflows (`n8n_workflows/`)
-- [x] Create `n8n_workflows/caption_normalizer.js` Code Node script formatting `metadata.json` tailored for 5 platforms (`YouTube #shorts` in first 80 chars, `Instagram` spaced tags, `TikTok` hooks, `Facebook` clean prompts, `LinkedIn` professional summaries).
-- [x] Create importable JSON templates for Tier 1 (`master_ingestion.json`) and Tier 2 (`platform_dispatcher.json` with the **72-Minute Drip-Feed Wait Node**).
-- [x] Create 5 Platform Executor Sub-Workflows (`executor_youtube.json`, `executor_instagram.json`, `executor_facebook.json`, `executor_linkedin.json`, `executor_tiktok.json`).
+## Phase 5: Serverless Video Generation (`make_reel.sh`) (Completed)
+- [x] Create `social-publishing-engine/bot_engine/make_reel.sh` wrapping `ffmpeg`.
+- [x] Configure `ffmpeg` to stitch `audio.wav` and `cover.png` into a 1080x1920 `.mp4`.
+- [x] Ensure output `.mp4` meets Instagram/TikTok specifications (H.264, AAC).
 
 ---
 
-## Phase 6: Package & Publish Phonk Batch (Workflow B) (Completed)
-- [x] **Kaggle Version 11 Completed:** Successfully rendered all 20 `.wav` Phonk tracks on GPU.
-- [x] Trigger **Package and Publish Phonk Batch (Workflow B)** on GitHub Actions: Successfully fixed `GITHUB_TOKEN` permissions and published `phonk_batch_release.zip` to GitHub Releases.
+## Phase 6: Official API Uploaders (`ig_api_uploader.py`, `yt_api_uploader.py`, `fb_api_uploader.py`) (Completed)
+- [x] Write `yt_api_uploader.py` using `google-api-python-client` with OAuth2 Refresh Token injection.
+- [x] Write `ig_api_uploader.py` using Facebook Graph API (`/media` and `/media_publish` endpoints) for Instagram Reels.
+- [x] Write `fb_api_uploader.py` using Facebook Graph API for Facebook Page Reels.
 
 ---
 
-## Phase 7: Oracle Cloud VM Provisioning & Live Deployment (Current)
-- [ ] Create Oracle Always Free Ampere A1 Compute Instance (4 OCPUs, 24GB RAM, Ubuntu 24.04).
-- [ ] SSH into Oracle Cloud VM (`ssh ubuntu@<your-oracle-vm-ip> -i <your-private-key>`).
-- [ ] Clone repository (`git clone https://github.com/ShehryarAsif09/phonk-pipeline.git && cd phonk-pipeline/social-publishing-engine`).
-- [ ] Run `./setup_oracle.sh` and verify instant `trycloudflare.com` HTTPS URL and `n8n` dashboard access.
-- [ ] Connect brand OAuth credentials (`YouTube`, `LinkedIn`, `Instagram`, `Facebook`) in n8n UI and upload `<brand_id>_tiktok_cookies.json` to `/opt/cookies/`.
-- [ ] Execute test release (`gym_phonk_0001`) through `routenote_uploader.py` and across all 5 social platforms.
+## Phase 7: Serverless Dispatcher Workflow & State Management (Completed)
+- [x] Create `publish_state.json` to act as a database tracking the `last_published_index`.
+- [x] Create `.github/workflows/serverless-publisher.yml`.
+- [x] Configure `schedule` trigger for every 6 hours (`0 */6 * * *`) and `workflow_dispatch`.
+- [x] Build out the Actions steps: download latest Kaggle release, extract `.wav` and `.png`, run `make_reel.sh`, execute the API upload scripts, and commit the updated `last_published_index` back to the repository.
+- [x] Debug and verify final run!
