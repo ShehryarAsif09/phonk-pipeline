@@ -122,6 +122,20 @@ jobs:
           echo "--- Uploading to Facebook Page Reels ---"
           python3 social-publishing-engine/bot_engine/fb_api_uploader.py --video-url "$PUBLIC_URL" --description "$CAPTION" || true
 
+      - name: Upload to TikTok via Playwright
+        env:
+          TIKTOK_COOKIES_JSON: ${{ secrets.TIKTOK_COOKIES_JSON }}
+        run: |
+          if [ -z "$TIKTOK_COOKIES_JSON" ]; then
+            echo "ERROR: TIKTOK_COOKIES_JSON secret is empty. Skipping TikTok."
+          else
+            mkdir -p cookies
+            echo "$TIKTOK_COOKIES_JSON" > ./cookies/phonk_pipeline_tiktok_cookies.json
+            CAPTION="🔥 Phonk Daily Drop 🔥 #phonk #gymphonk #drift #music #sigma #gymmotivation"
+            echo "--- Uploading to TikTok ---"
+            python3 social-publishing-engine/bot_engine/tiktok_uploader.py --brand phonk_pipeline --file output_reel.mp4 --caption "$CAPTION" || true
+          fi
+
       - name: Update State and Commit
         run: |
           # Update state JSON
