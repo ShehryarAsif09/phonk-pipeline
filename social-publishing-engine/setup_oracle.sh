@@ -15,6 +15,18 @@ sudo iptables -I INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null || true
 sudo iptables -I INPUT -p tcp --dport 443 -j ACCEPT 2>/dev/null || true
 sudo netfilter-persistent save 2>/dev/null || true
 
+echo "=== [1.5/5] Configuring 4GB Swap Space (Crucial for 1GB RAM Instances) ==="
+if [ ! -f /swapfile ]; then
+    sudo fallocate -l 4G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=4096
+    sudo chmod 600 /swapfile
+    sudo mkswap /swapfile
+    sudo swapon /swapfile
+    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+    echo "Swap allocated successfully!"
+else
+    echo "Swapfile already exists."
+fi
+
 echo "=== [2/5] Creating Shared Storage & Cookie Directories ==="
 sudo mkdir -p /opt/shared_videos/covers
 sudo mkdir -p /opt/shared_videos/audio
