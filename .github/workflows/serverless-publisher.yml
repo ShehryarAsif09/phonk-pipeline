@@ -1,0 +1,111 @@
+name: Serverless Phonk Publisher
+
+on:
+  schedule:
+    # Run every 6 hours (4 posts a day)
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Allow manual trigger for testing
+
+permissions:
+  contents: write # Required to push state updates and download releases
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install Dependencies
+        run: |
+          pip install playwright google-api-python-client
+          playwright install chromium
+
+      - name: Read Publish State
+        id: state
+        run: |
+          INDEX=$(jq '.last_published_index' publish_state.json)
+          NEXT_INDEX=$((INDEX + 1))
+          echo "NEXT_INDEX=$NEXT_INDEX" >> $GITHUB_ENV
+          
+          BATCH=$(jq -r '.current_batch' publish_state.json)
+          echo "BATCH=$BATCH" >> $GITHUB_ENV
+
+      - name: Download Phonk Batch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p current_batch
+          gh release download "$BATCH" --dir current_batch --pattern "*.zip" || true
+          if [ -f current_batch/*.zip ]; then
+            unzip current_batch/*.zip -d unzipped_batch
+          else
+            echo "ERROR: Batch $BATCH not found in releases."
+            exit 1
+          fi
+
+      - name: Render MP4 Reel
+        run: |
+          # The batch folder should have audio_out/ and covers/ directories.
+          # We grab the file at NEXT_INDEX. We assume files are alphabetically sorted.
+          
+          AUDIO_FILE=$(ls unzipped_batch/audio_out/*.wav | sort | sed -n "${NEXT_INDEX}p")
+          COVER_FILE=$(ls unzipped_batch/covers/*.png | sort | sed -n "${NEXT_INDEX}p")
+          
+          if [ -z "$AUDIO_FILE" ] || [ -z "$COVER_FILE" ]; then
+            echo "No more tracks left in batch $BATCH. Halting publisher."
+            exit 0
+          fi
+          
+          echo "Rendering reel for: $AUDIO_FILE"
+          chmod +x social-publishing-engine/bot_engine/make_reel.sh
+          ./social-publishing-engine/bot_engine/make_reel.sh "$COVER_FILE" "$AUDIO_FILE" output_reel.mp4
+
+      - name: Upload to GitHub Releases for IG/FB API Access
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # We upload the generated mp4 to a temporary release asset so FB/IG Graph API can access it via URL
+          gh release upload "$BATCH" output_reel.mp4 --clobber
+          # Get the public URL
+          PUBLIC_URL="https://github.com/${{ github.repository }}/releases/download/$BATCH/output_reel.mp4"
+          echo "PUBLIC_URL=$PUBLIC_URL" >> $GITHUB_ENV
+
+      - name: Upload via Official APIs
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          IG_ACCOUNT_ID: ${{ secrets.IG_ACCOUNT_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+        run: |
+          CAPTION="🔥 Phonk Daily Drop 🔥 #phonk #gymphonk #drift #music #sigma #gymmotivation"
+          
+          echo "--- Uploading to YouTube Shorts ---"
+          python3 social-publishing-engine/bot_engine/yt_api_uploader.py --file output_reel.mp4 --title "Gym Phonk Drop 🔥" --description "$CAPTION" --tags "phonk,gym,drift" || true
+          
+          echo "--- Uploading to Instagram Reels ---"
+          python3 social-publishing-engine/bot_engine/ig_api_uploader.py --video-url "$PUBLIC_URL" --caption "$CAPTION" || true
+          
+          echo "--- Uploading to Facebook Page Reels ---"
+          python3 social-publishing-engine/bot_engine/fb_api_uploader.py --video-url "$PUBLIC_URL" --description "$CAPTION" || true
+
+      - name: Update State and Commit
+        run: |
+          # Update state JSON
+          jq ".last_published_index = $NEXT_INDEX" publish_state.json > tmp.json && mv tmp.json publish_state.json
+          
+          # Commit back to main
+          git config --global user.name "Phonk Publisher Bot"
+          git config --global user.email "bot@phonkpipeline.local"
+          git add publish_state.json
+          git commit -m "bot: Auto-published track $NEXT_INDEX from batch $BATCH"
+          git push
