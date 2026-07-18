@@ -36,14 +36,15 @@
 
 ---
 
-## Phase 6: Package & Publish Phonk Batch (Workflow B) (Next Step)
+## Phase 6: Package & Publish Phonk Batch (Workflow B) (Completed)
 - [x] **Kaggle Version 11 Completed:** Successfully rendered all 20 `.wav` Phonk tracks on GPU.
-- [ ] Trigger **Package and Publish Phonk Batch (Workflow B)** on GitHub Actions to download `audio_out/*.wav` + `covers/*.png` and attach `phonk-batch-xxxxx.zip` to GitHub Releases.
+- [x] Trigger **Package and Publish Phonk Batch (Workflow B)** on GitHub Actions: Successfully fixed `GITHUB_TOKEN` permissions and published `phonk_batch_release.zip` to GitHub Releases.
 
 ---
 
-## Phase 7: Oracle Cloud VM SSH Deployment & Live Dry-Run (Pending)
-- [ ] SSH into Oracle Cloud VM (`ubuntu@your-oracle-vm-ip`).
+## Phase 7: Oracle Cloud VM Provisioning & Live Deployment (Current)
+- [ ] Create Oracle Always Free Ampere A1 Compute Instance (4 OCPUs, 24GB RAM, Ubuntu 24.04).
+- [ ] SSH into Oracle Cloud VM (`ssh ubuntu@<your-oracle-vm-ip> -i <your-private-key>`).
 - [ ] Clone repository (`git clone https://github.com/ShehryarAsif09/phonk-pipeline.git && cd phonk-pipeline/social-publishing-engine`).
 - [ ] Run `./setup_oracle.sh` and verify instant `trycloudflare.com` HTTPS URL and `n8n` dashboard access.
 - [ ] Connect brand OAuth credentials (`YouTube`, `LinkedIn`, `Instagram`, `Facebook`) in n8n UI and upload `<brand_id>_tiktok_cookies.json` to `/opt/cookies/`.
