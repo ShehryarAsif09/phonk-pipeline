@@ -29,24 +29,46 @@ jobs:
 
       - name: Read Publish State
         id: state
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Get the latest release tag from GitHub
+          LATEST_BATCH=$(gh release view --json tagName -q .tagName || echo "")
+          if [ -z "$LATEST_BATCH" ]; then
+            echo "ERROR: No releases found in the repository!"
+            exit 1
+          fi
+          echo "LATEST_BATCH=$LATEST_BATCH" >> $GITHUB_ENV
+          
+          # Read current state
+          CURRENT_BATCH=$(jq -r '.current_batch' publish_state.json)
           INDEX=$(jq '.last_published_index' publish_state.json)
+          
+          # If the latest batch is different from our state, reset the index!
+          if [ "$LATEST_BATCH" != "$CURRENT_BATCH" ]; then
+            echo "New batch detected! Resetting index."
+            CURRENT_BATCH=$LATEST_BATCH
+            INDEX=-1
+            
+            # Save the new batch to state
+            jq ".current_batch = \"$LATEST_BATCH\"" publish_state.json > tmp.json && mv tmp.json publish_state.json
+          fi
+          
           NEXT_INDEX=$((INDEX + 1))
           echo "NEXT_INDEX=$NEXT_INDEX" >> $GITHUB_ENV
-          
-          BATCH=$(jq -r '.current_batch' publish_state.json)
-          echo "BATCH=$BATCH" >> $GITHUB_ENV
+          echo "BATCH=$CURRENT_BATCH" >> $GITHUB_ENV
 
       - name: Download Phonk Batch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p current_batch
+          echo "Downloading assets for release: $BATCH"
           gh release download "$BATCH" --dir current_batch --pattern "*.zip" || true
-          if [ -f current_batch/*.zip ]; then
+          if ls current_batch/*.zip 1> /dev/null 2>&1; then
             unzip current_batch/*.zip -d unzipped_batch
           else
-            echo "ERROR: Batch $BATCH not found in releases."
+            echo "ERROR: Batch $BATCH not found in releases or no zip attached."
             exit 1
           fi
 
