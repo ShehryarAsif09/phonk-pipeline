@@ -74,11 +74,11 @@ jobs:
 
       - name: Render MP4 Reel
         run: |
-          # The batch folder should have audio_out/ and covers/ directories.
+          # The batch folder has nested <slug>/ directories. We use find and sort to guarantee consistent ordering.
           # We grab the file at NEXT_INDEX. We assume files are alphabetically sorted.
           
-          AUDIO_FILE=$(ls unzipped_batch/audio_out/*.wav | sort | sed -n "${NEXT_INDEX}p")
-          COVER_FILE=$(ls unzipped_batch/covers/*.png | sort | sed -n "${NEXT_INDEX}p")
+          AUDIO_FILE=$(find unzipped_batch -name "*.wav" | sort | sed -n "${NEXT_INDEX}p")
+          COVER_FILE=$(find unzipped_batch -name "*.png" | sort | sed -n "${NEXT_INDEX}p")
           
           if [ -z "$AUDIO_FILE" ] || [ -z "$COVER_FILE" ]; then
             echo "No more tracks left in batch $BATCH. Halting publisher."
