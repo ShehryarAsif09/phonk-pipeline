@@ -110,6 +110,8 @@ jobs:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
+          PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
+          PINTEREST_BOARD_ID: ${{ secrets.PINTEREST_BOARD_ID }}
         run: |
           CAPTION="🔥 Phonk Daily Drop 🔥 #phonk #gymphonk #drift #music #sigma #gymmotivation"
           
@@ -121,6 +123,9 @@ jobs:
           
           echo "--- Uploading to Facebook Page Reels ---"
           python3 social-publishing-engine/bot_engine/fb_api_uploader.py --video-url "$PUBLIC_URL" --file output_reel.mp4 --description "$CAPTION" || true
+
+          echo "--- Uploading to Pinterest Idea Pins ---"
+          python3 social-publishing-engine/bot_engine/pinterest_uploader.py --file output_reel.mp4 --title "Gym Phonk Drop 🔥" --description "$CAPTION" --link "https://publixion.com" || true
 
       - name: Upload to TikTok via Playwright
         env:
