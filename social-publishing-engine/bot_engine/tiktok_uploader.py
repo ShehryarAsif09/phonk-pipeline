@@ -3,13 +3,48 @@
 Multi-Brand TikTok Uploader using Headless Playwright Chromium.
 Accepts: --brand <id> --file <path_to_mp4> --caption <caption_text>
 Loads: /data/cookies/<brand_id>_tiktok_cookies.json or TIKTOK_COOKIES_JSON env var.
+Automatically converts raw EditThisCookie JSON arrays into Playwright storage_state format.
 """
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+
+
+def prepare_playwright_storage_state(cookie_path: Path) -> str:
+    """Auto-converts raw array cookies (EditThisCookie) into Playwright storage_state dict."""
+    try:
+        raw_text = cookie_path.read_text(encoding="utf-8")
+        data = json.loads(raw_text)
+        
+        # If it's a raw array [ {...}, {...} ], convert to Playwright format
+        if isinstance(data, list):
+            formatted_cookies = []
+            for c in data:
+                cookie = {
+                    "name": c.get("name"),
+                    "value": c.get("value"),
+                    "domain": c.get("domain", ".tiktok.com"),
+                    "path": c.get("path", "/"),
+                    "secure": c.get("secure", True),
+                    "httpOnly": c.get("httpOnly", False),
+                    "sameSite": "Lax"
+                }
+                if "expirationDate" in c:
+                    cookie["expires"] = int(c["expirationDate"])
+                formatted_cookies.append(cookie)
+            
+            storage_dict = {"cookies": formatted_cookies, "origins": []}
+            prepared_path = cookie_path.parent / f"playwright_{cookie_path.name}"
+            prepared_path.write_text(json.dumps(storage_dict), encoding="utf-8")
+            return str(prepared_path)
+    except Exception as e:
+        print(f"Warning normalizing cookie format: {e}", file=sys.stderr)
+
+    return str(cookie_path)
 
 
 def main():
@@ -39,6 +74,8 @@ def main():
         print(f"ERROR: Video file not found: {args.file}", file=sys.stderr)
         sys.exit(1)
 
+    storage_state_file = prepare_playwright_storage_state(cookie_path)
+
     print(f"[{args.brand}] Launching Playwright Chromium for TikTok Upload...")
     with sync_playwright() as p:
         browser = p.chromium.launch(
@@ -50,7 +87,7 @@ def main():
             ]
         )
         context = browser.new_context(
-            storage_state=str(cookie_path),
+            storage_state=storage_state_file,
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
             viewport={"width": 1280, "height": 800}
         )
@@ -76,7 +113,6 @@ def main():
             iframe = page.frame_locator('iframe[data-testid="cc_app_frame"]').first
             file_input = iframe.locator('input[type="file"]').first
         else:
-            # Fallback direct locator
             file_input = page.locator('input[accept*="video"]').first
 
         file_input.set_input_files(args.file)
@@ -103,7 +139,6 @@ def main():
         except Exception as e:
             print(f"[{args.brand}] Warning clicking post button: {e}")
 
-        # Save refreshed session cookies
         context.storage_state(path=str(cookie_path))
         print(f"[{args.brand}] SUCCESS! Video uploaded to TikTok and cookies refreshed.")
         browser.close()
