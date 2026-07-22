@@ -162,7 +162,12 @@ def main():
 
         print(f"[{args.brand}] Submitting post...")
         try:
-            post_btn = page.locator('button:has-text("Post"), button:has-text("Upload")').first
+            # Explicit selectors targeting the form footer submit button, excluding sidebar
+            post_btn = page.locator('button[data-e2e="post_video"], div.btn-post button, button.btn-post, div[class*="btn-post"] button').first
+            if post_btn.count() == 0:
+                post_btn = page.locator('.btn-post button, button:has-text("Post")').last
+
+            post_btn.wait_for(state="attached", timeout=15000)
             post_btn.click(force=True)
             page.wait_for_timeout(10000)
         except Exception as e:
