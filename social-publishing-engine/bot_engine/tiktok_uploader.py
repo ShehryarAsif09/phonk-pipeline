@@ -149,19 +149,17 @@ def main():
         for attempt in range(3):
             try:
                 dismiss_selectors = [
+                    'button:has-text("Turn on")',
                     'button:has-text("Got it")',
                     'button:has-text("Allow")',
-                    'button:has-text("Close")',
                     'button:has-text("OK")',
                     '.TUXModal-close-icon',
-                    'div.TUXModal-overlay button',
-                    '[data-floating-ui-portal] button',
                 ]
                 for sel in dismiss_selectors:
                     if page.locator(sel).count() > 0:
                         print(f"[{args.brand}] Dismissing popup (attempt {attempt+1}): {sel}")
                         page.locator(sel).first.click(force=True)
-                        page.wait_for_timeout(500)
+                        page.wait_for_timeout(1000)
             except Exception:
                 pass
 
@@ -177,6 +175,11 @@ def main():
             page.keyboard.press("Backspace")
             page.keyboard.type(args.caption, delay=10)
             print(f"[{args.brand}] Caption set successfully.")
+            # Close hashtag suggestion dropdown by pressing Escape and clicking outside
+            page.keyboard.press("Escape")
+            page.wait_for_timeout(500)
+            page.mouse.click(640, 100)
+            page.wait_for_timeout(500)
         except Exception as e:
             print(f"[{args.brand}] Warning setting caption: {e}")
 
@@ -202,43 +205,64 @@ def main():
             except Exception:
                 pass
 
-        # Step 9: Click the Post button
+        # Step 9: Scroll to bottom to reveal the Post button
+        print(f"[{args.brand}] Scrolling page to reveal Post button...")
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        page.wait_for_timeout(2000)
+        screenshot(page, "05b_after_scroll", args.brand)
+
+        # Step 10: Click the Post button
         posted = False
         print(f"[{args.brand}] Attempting to click Post button...")
         try:
-            # Try the most specific selector first
             post_selectors = [
                 'button[data-e2e="post_video"]',
                 'div.btn-post button',
                 'button.btn-post',
                 'div[class*="btn-post"] button',
-                'button:has-text("Post"):not([data-tt="Sidebar_UploadEntrance_WideButton"])',
+                'button:has-text("Post"):not([data-tt*="Sidebar"]):not([data-tt*="Upload"])',
             ]
             for sel in post_selectors:
                 locator = page.locator(sel)
                 if locator.count() > 0:
                     btn = locator.first
                     is_disabled = btn.get_attribute("aria-disabled", timeout=2000)
-                    print(f"[{args.brand}] Found post button via '{sel}', disabled={is_disabled}")
-                    if is_disabled == "true":
-                        print(f"[{args.brand}] Post button is disabled (video still processing). Waiting 10 more seconds...")
-                        page.wait_for_timeout(10000)
+                    data_disabled = btn.get_attribute("data-disabled", timeout=2000)
+                    print(f"[{args.brand}] Found post button via '{sel}', aria-disabled={is_disabled}, data-disabled={data_disabled}")
+                    if is_disabled == "true" or data_disabled == "true":
+                        print(f"[{args.brand}] Post button is disabled. Waiting 15 more seconds for processing...")
+                        page.wait_for_timeout(15000)
+                    btn.scroll_into_view_if_needed(timeout=5000)
                     btn.click(force=True)
                     posted = True
                     print(f"[{args.brand}] ✅ Post button CLICKED!")
                     break
 
             if not posted:
-                print(f"[{args.brand}] ❌ No matching Post button found with any selector!")
+                print(f"[{args.brand}] ❌ No matching Post button found. Dumping all buttons:")
+                all_btns = page.locator("button")
+                for i in range(min(all_btns.count(), 30)):
+                    try:
+                        b = all_btns.nth(i)
+                        txt = b.inner_text(timeout=1000).strip()[:40]
+                        dtt = b.get_attribute("data-tt", timeout=1000) or ""
+                        vis = b.is_visible()
+                        print(f"  [{i}] text='{txt}' data-tt='{dtt}' visible={vis}")
+                    except Exception:
+                        pass
         except Exception as e:
             print(f"[{args.brand}] ❌ Error clicking post button: {e}")
 
-        # Step 10: Wait for upload and capture final state
+        # Step 11: Wait for upload and capture final state
         if posted:
-            print(f"[{args.brand}] Waiting 20s for upload to complete...")
-            page.wait_for_timeout(20000)
+            print(f"[{args.brand}] Waiting 25s for upload to complete...")
+            page.wait_for_timeout(25000)
 
         screenshot(page, "06_final_state", args.brand)
+
+        # Check if a success/confirmation message appeared
+        final_url = page.url
+        print(f"[{args.brand}] Final URL: {final_url}")
 
         # Save refreshed cookies
         context.storage_state(path=str(cookie_path))
