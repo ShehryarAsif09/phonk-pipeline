@@ -136,6 +136,14 @@ jobs:
             python3 social-publishing-engine/bot_engine/tiktok_uploader.py --brand phonk_pipeline --file output_reel.mp4 --caption "$CAPTION" || true
           fi
 
+      - name: Upload TikTok Debug Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiktok-debug-screenshots
+          path: tiktok_debug_screenshots/
+          if-no-files-found: ignore
+
       - name: Update State and Commit
         run: |
           # Update state JSON

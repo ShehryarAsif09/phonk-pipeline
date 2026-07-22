@@ -62,24 +62,31 @@ def main():
     # Step 2: Upload binary bytes directly if local file exists, else use URL
     local_file = Path(args.file) if args.file else None
     if local_file and local_file.exists() and upload_url:
-        print(f"Uploading video bytes directly ({local_file.stat().st_size} bytes) to Facebook rupload endpoint...")
         file_bytes = local_file.read_bytes()
+        file_size = len(file_bytes)
+        print(f"Uploading video bytes directly ({file_size} bytes) to Facebook rupload endpoint...")
+        print(f"Upload URL: {upload_url[:80]}...")
         req = urllib.request.Request(
             upload_url,
             data=file_bytes,
             headers={
                 "Authorization": f"OAuth {access_token}",
-                "Offset": "0",
                 "offset": "0",
-                "Content-Type": "application/octet-stream"
-            }
+                "file_size": str(file_size),
+                "Content-Type": "application/octet-stream",
+            },
+            method="POST"
         )
         try:
             with urllib.request.urlopen(req) as response:
                 rupload_res = json.loads(response.read().decode())
                 print(f"Binary stream upload complete: {rupload_res}")
         except urllib.error.HTTPError as e:
-            print(f"Warning on binary upload step: {e.code} - {e.read().decode()}", file=sys.stderr)
+            err_body = e.read().decode()
+            print(f"FB rupload ERROR: {e.code} - {err_body}", file=sys.stderr)
+            print("Falling back to file_url method...")
+            # Mark binary upload as failed so we fall back to URL method
+            local_file = None
     
     # Step 3: Finish and publish Reel
     publish_url = f"https://graph.facebook.com/v19.0/{fb_page_id}/video_reels"

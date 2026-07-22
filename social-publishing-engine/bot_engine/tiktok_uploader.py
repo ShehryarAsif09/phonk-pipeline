@@ -4,6 +4,7 @@ Multi-Brand TikTok Uploader using Headless Playwright Chromium.
 Accepts: --brand <id> --file <path_to_mp4> --caption <caption_text>
 Loads: /data/cookies/<brand_id>_tiktok_cookies.json or TIKTOK_COOKIES_JSON env var.
 Automatically converts raw EditThisCookie JSON arrays into Playwright storage_state format.
+Captures debug screenshots at every step for CI/CD visibility.
 """
 
 import argparse
@@ -14,13 +15,23 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 
+SCREENSHOT_DIR = Path("tiktok_debug_screenshots")
+
+
+def screenshot(page, step_name: str, brand: str):
+    """Capture a debug screenshot and log its path."""
+    SCREENSHOT_DIR.mkdir(exist_ok=True)
+    path = SCREENSHOT_DIR / f"{brand}_{step_name}.png"
+    page.screenshot(path=str(path), full_page=False)
+    print(f"[{brand}] 📸 Screenshot saved: {path}")
+
+
 def prepare_playwright_storage_state(cookie_path: Path) -> str:
     """Auto-converts raw array cookies (EditThisCookie) into Playwright storage_state dict."""
     try:
         raw_text = cookie_path.read_text(encoding="utf-8")
         data = json.loads(raw_text)
-        
-        # If it's a raw array [ {...}, {...} ], convert to Playwright format
+
         if isinstance(data, list):
             formatted_cookies = []
             for c in data:
@@ -36,7 +47,7 @@ def prepare_playwright_storage_state(cookie_path: Path) -> str:
                 if "expirationDate" in c:
                     cookie["expires"] = int(c["expirationDate"])
                 formatted_cookies.append(cookie)
-            
+
             storage_dict = {"cookies": formatted_cookies, "origins": []}
             prepared_path = cookie_path.parent / f"playwright_{cookie_path.name}"
             prepared_path.write_text(json.dumps(storage_dict), encoding="utf-8")
@@ -55,8 +66,7 @@ def main():
     args = parser.parse_args()
 
     cookie_path = Path(f"/data/cookies/{args.brand}_tiktok_cookies.json")
-    
-    # Check if TIKTOK_COOKIES_JSON environment variable is set directly
+
     env_cookies = os.getenv("TIKTOK_COOKIES_JSON")
     if env_cookies:
         os.makedirs("./cookies", exist_ok=True)
@@ -93,6 +103,7 @@ def main():
         )
         page = context.new_page()
 
+        # Step 1: Visit homepage to warm session cookies
         print(f"[{args.brand}] Initializing TikTok session on homepage...")
         try:
             page.goto("https://www.tiktok.com/", timeout=30000)
@@ -100,6 +111,7 @@ def main():
         except Exception:
             pass
 
+        # Step 2: Navigate to TikTok Studio upload page
         print(f"[{args.brand}] Navigating to TikTok Creator Center Upload Page...")
         page.goto("https://www.tiktok.com/tiktokstudio/upload?lang=en", timeout=60000)
         try:
@@ -107,15 +119,18 @@ def main():
         except Exception:
             pass
 
-        # Check if redirected to login
+        screenshot(page, "01_upload_page_loaded", args.brand)
+        print(f"[{args.brand}] Current URL: {page.url}")
+
+        # Step 3: Check if redirected to login
         if "login" in page.url.lower():
+            screenshot(page, "FAIL_redirected_to_login", args.brand)
             print(f"[{args.brand}] ERROR: TikTok session cookies expired or invalid. Redirected to login.", file=sys.stderr)
             browser.close()
             sys.exit(1)
 
+        # Step 4: Attach video file
         print(f"[{args.brand}] Attaching MP4 file: {args.file}...")
-        
-        # Robust check: try main page file input first, fallback to iframe if present
         file_input = None
         if page.locator('input[type="file"]').count() > 0:
             file_input = page.locator('input[type="file"]').first
@@ -126,57 +141,113 @@ def main():
             file_input = page.locator('input[accept*="video"]').first
 
         file_input.set_input_files(args.file)
+        print(f"[{args.brand}] File attached. Waiting 10s for video processing...")
+        page.wait_for_timeout(10000)
+        screenshot(page, "02_after_file_attached", args.brand)
 
-        print(f"[{args.brand}] Waiting for video processing and draft editor...")
-        page.wait_for_timeout(5000)
+        # Step 5: Dismiss ALL modals/popups aggressively
+        for attempt in range(3):
+            try:
+                dismiss_selectors = [
+                    'button:has-text("Got it")',
+                    'button:has-text("Allow")',
+                    'button:has-text("Close")',
+                    'button:has-text("OK")',
+                    '.TUXModal-close-icon',
+                    'div.TUXModal-overlay button',
+                    '[data-floating-ui-portal] button',
+                ]
+                for sel in dismiss_selectors:
+                    if page.locator(sel).count() > 0:
+                        print(f"[{args.brand}] Dismissing popup (attempt {attempt+1}): {sel}")
+                        page.locator(sel).first.click(force=True)
+                        page.wait_for_timeout(500)
+            except Exception:
+                pass
 
-        # Auto-dismiss onboarding modals / popups if present
+        screenshot(page, "03_after_modal_dismiss", args.brand)
+
+        # Step 6: Set caption
+        print(f"[{args.brand}] Setting caption...")
         try:
-            modals = page.locator('button:has-text("Got it"), button:has-text("Allow"), button:has-text("Close"), button:has-text("OK"), .TUXModal-close-icon')
-            if modals.count() > 0:
-                print(f"[{args.brand}] Dismissing onboarding modal popup...")
-                modals.first.click(force=True)
-                page.wait_for_timeout(1000)
-        except Exception:
-            pass
-
-        # Look for description / caption input editor
-        try:
-            editor = page.locator('.public-DraftEditor-editor, div[contenteditable="true"], textarea').first
-            editor.wait_for(state="visible", timeout=30000)
+            editor = page.locator('.public-DraftEditor-content, div[contenteditable="true"]').first
+            editor.wait_for(state="visible", timeout=15000)
             editor.click(force=True)
             page.keyboard.press("Control+A")
             page.keyboard.press("Backspace")
-            editor.fill(args.caption)
+            page.keyboard.type(args.caption, delay=10)
+            print(f"[{args.brand}] Caption set successfully.")
         except Exception as e:
             print(f"[{args.brand}] Warning setting caption: {e}")
 
-        # Re-check and dismiss any modal blocking the post button
-        try:
-            modals = page.locator('button:has-text("Got it"), button:has-text("Allow"), button:has-text("Close"), button:has-text("OK"), .TUXModal-close-icon')
-            if modals.count() > 0:
-                modals.first.click(force=True)
-                page.wait_for_timeout(1000)
-        except Exception:
-            pass
+        screenshot(page, "04_after_caption_set", args.brand)
 
-        print(f"[{args.brand}] Submitting post (waiting for video processing)...")
-        page.wait_for_timeout(10000)
-        try:
-            # Explicit selectors targeting the form footer submit button, excluding sidebar
-            post_btn = page.locator('button[data-e2e="post_video"], div.btn-post button, button.btn-post, div[class*="btn-post"] button').first
-            if post_btn.count() == 0:
-                post_btn = page.locator('.btn-post button, button:has-text("Post")').last
+        # Step 7: Wait for video to finish processing before clicking Post
+        print(f"[{args.brand}] Waiting 15s for TikTok video transcoding to complete...")
+        page.wait_for_timeout(15000)
+        screenshot(page, "05_before_post_click", args.brand)
 
-            post_btn.wait_for(state="attached", timeout=15000)
-            post_btn.click(force=True)
-            print(f"[{args.brand}] Post button clicked! Waiting 15s for upload completion...")
-            page.wait_for_timeout(15000)
+        # Step 8: Dump all visible buttons for debugging
+        all_buttons = page.locator("button:visible")
+        btn_count = all_buttons.count()
+        print(f"[{args.brand}] DEBUG: Found {btn_count} visible buttons on page:")
+        for i in range(min(btn_count, 20)):
+            btn = all_buttons.nth(i)
+            try:
+                text = btn.inner_text(timeout=2000).strip().replace("\n", " ")
+                classes = btn.get_attribute("class", timeout=2000) or ""
+                data_tt = btn.get_attribute("data-tt", timeout=2000) or ""
+                disabled = btn.get_attribute("aria-disabled", timeout=2000) or "false"
+                print(f"  Button[{i}]: text='{text[:50]}' data-tt='{data_tt}' disabled={disabled}")
+            except Exception:
+                pass
+
+        # Step 9: Click the Post button
+        posted = False
+        print(f"[{args.brand}] Attempting to click Post button...")
+        try:
+            # Try the most specific selector first
+            post_selectors = [
+                'button[data-e2e="post_video"]',
+                'div.btn-post button',
+                'button.btn-post',
+                'div[class*="btn-post"] button',
+                'button:has-text("Post"):not([data-tt="Sidebar_UploadEntrance_WideButton"])',
+            ]
+            for sel in post_selectors:
+                locator = page.locator(sel)
+                if locator.count() > 0:
+                    btn = locator.first
+                    is_disabled = btn.get_attribute("aria-disabled", timeout=2000)
+                    print(f"[{args.brand}] Found post button via '{sel}', disabled={is_disabled}")
+                    if is_disabled == "true":
+                        print(f"[{args.brand}] Post button is disabled (video still processing). Waiting 10 more seconds...")
+                        page.wait_for_timeout(10000)
+                    btn.click(force=True)
+                    posted = True
+                    print(f"[{args.brand}] ✅ Post button CLICKED!")
+                    break
+
+            if not posted:
+                print(f"[{args.brand}] ❌ No matching Post button found with any selector!")
         except Exception as e:
-            print(f"[{args.brand}] Warning clicking post button: {e}")
+            print(f"[{args.brand}] ❌ Error clicking post button: {e}")
 
+        # Step 10: Wait for upload and capture final state
+        if posted:
+            print(f"[{args.brand}] Waiting 20s for upload to complete...")
+            page.wait_for_timeout(20000)
+
+        screenshot(page, "06_final_state", args.brand)
+
+        # Save refreshed cookies
         context.storage_state(path=str(cookie_path))
-        print(f"[{args.brand}] SUCCESS! Video uploaded to TikTok and cookies refreshed.")
+
+        if posted:
+            print(f"[{args.brand}] ✅ TikTok upload sequence completed. Check profile to confirm.")
+        else:
+            print(f"[{args.brand}] ❌ FAILED: Post button was never clicked. Check debug screenshots.")
+
         browser.close()
 
 
