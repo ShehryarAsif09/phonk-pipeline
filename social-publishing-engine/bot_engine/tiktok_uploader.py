@@ -20,8 +20,14 @@ def main():
     args = parser.parse_args()
 
     cookie_path = Path(f"/data/cookies/{args.brand}_tiktok_cookies.json")
-    if not cookie_path.exists():
-        # Fallback check inside local ./cookies folder if not mounted to /data/cookies
+    
+    # Check if TIKTOK_COOKIES_JSON environment variable is set directly
+    env_cookies = os.getenv("TIKTOK_COOKIES_JSON")
+    if env_cookies:
+        os.makedirs("./cookies", exist_ok=True)
+        cookie_path = Path(f"./cookies/{args.brand}_tiktok_cookies.json")
+        cookie_path.write_text(env_cookies, encoding="utf-8")
+    elif not cookie_path.exists():
         local_cookie = Path(f"./cookies/{args.brand}_tiktok_cookies.json")
         if local_cookie.exists():
             cookie_path = local_cookie

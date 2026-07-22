@@ -119,7 +119,7 @@ def run(prompts_path: str, out_dir: str, acestep_repo_root: str, config_path: st
             keyscale=entry.get("keyscale", ""),
             timesignature=entry.get("timesignature", "4"),
             vocal_language=entry.get("language", "en"),
-            duration=entry.get("duration", 60),
+            duration=entry.get("duration", 120),
             inference_steps=8,      # turbo config default; raise to ~30-50 for slightly better fidelity at the cost of time
             guidance_scale=1.0,
             seed=-1,

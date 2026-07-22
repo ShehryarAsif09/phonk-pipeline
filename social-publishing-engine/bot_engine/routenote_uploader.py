@@ -1,82 +1,66 @@
-#!/usr/bin/env python3
-"""
-RouteNote Automated Music Distribution Uploader via Headless Playwright Chromium.
-Accepts: --audio <path_to_wav> --cover <path_to_png> --title <title> --artist <artist>
-Uses environment variables ROUTENOTE_EMAIL and ROUTENOTE_PASSWORD for authentication.
-"""
-
+import asyncio
 import argparse
-import os
 import sys
-from pathlib import Path
-from playwright.sync_api import sync_playwright
+import os
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
+async def upload_to_routenote(file_path: str, cover_path: str, track_name: str, artist_name: str):
+    print(f"Starting RouteNote Upload for '{track_name}' by '{artist_name}'...")
+    
+    if not os.path.exists("cookies/routenote_cookies.json"):
+        print("ERROR: cookies/routenote_cookies.json not found! Export them using EditThisCookie and save them locally.")
+        return
 
-def main():
-    parser = argparse.ArgumentParser(description="RouteNote Automated Uploader")
-    parser.add_argument("--audio", required=True, help="Path to .wav track")
-    parser.add_argument("--cover", required=True, help="Path to 3000x3000 .png cover art")
-    parser.add_argument("--title", required=True, help="Track Title")
-    parser.add_argument("--artist", required=True, help="Primary Artist Name")
-    parser.add_argument("--genre", default="Electronic", help="Primary Genre")
-    args = parser.parse_args()
-
-    email = os.getenv("ROUTENOTE_EMAIL")
-    password = os.getenv("ROUTENOTE_PASSWORD")
-
-    if not email or not password:
-        print("ERROR: ROUTENOTE_EMAIL and ROUTENOTE_PASSWORD environment variables not set.", file=sys.stderr)
-        sys.exit(1)
-
-    print(f"[RouteNote Bot] Launching Playwright Chromium for release: {args.title}...")
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"]
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=False) # Headful mode for local testing!
+        context = await browser.new_context(
+            storage_state="cookies/routenote_cookies.json",
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
         )
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
-        )
-        page = context.new_page()
+        page = await context.new_page()
 
-        print("[RouteNote Bot] Logging in...")
-        page.goto("https://www.routenote.com/rn/login", timeout=60000)
-        page.fill('input[name="username"]', email)
-        page.fill('input[name="password"]', password)
-        page.click('button[type="submit"], input[type="submit"]')
-        page.wait_for_load_state("networkidle")
-
-        # Check for successful login
-        if "login" in page.url.lower():
-            print("ERROR: RouteNote login failed or blocked by challenge.", file=sys.stderr)
-            browser.close()
-            sys.exit(1)
-
-        print("[RouteNote Bot] Navigating to Create New Release...")
-        page.goto("https://www.routenote.com/rn/releases/create", timeout=60000)
-
-        # Step 1: Album/Single Title
-        page.fill('input[name="release_title"]', args.title)
-        page.click('button:has-text("Create Release"), input[value="Create Release"]')
-        page.wait_for_load_state("networkidle")
-
-        print("[RouteNote Bot] Attaching Audio (.wav) and Cover Art (.png)...")
-        # RouteNote workflow attaches files and sets instrumental/genre tags
-        # (Exact DOM selectors adapt to RouteNote's multi-step form)
         try:
-            audio_input = page.locator('input[type="file"][accept*="audio"], input[type="file"]').first
-            audio_input.set_input_files(args.audio)
-            page.wait_for_timeout(5000)
+            print("Navigating to RouteNote dashboard...")
+            await page.goto("https://www.routenote.com/rn/dashboard", wait_until="networkidle")
+            
+            # Wait to see if we are logged in
+            await page.wait_for_timeout(5000)
+            
+            if "login" in page.url:
+                print("ERROR: Cookies are invalid or expired. You were redirected to the login page.")
+                await browser.close()
+                return
+                
+            print("Successfully authenticated. Looking for 'Create New Release' button...")
+            
+            try:
+                # First try the generic "Create New Release" link or button
+                await page.get_by_role("link", name="Create New Release").click(timeout=10000)
+            except PlaywrightTimeoutError:
+                print("\n[CRASH LOG] Could not find the 'Create New Release' button.")
+                print("ACTION REQUIRED: Look at the browser window. Tell me what the button says, or inspect the HTML!\n")
+                
+                input("Press ENTER to close the browser...")
+                await browser.close()
+                return
 
-            cover_input = page.locator('input[type="file"][accept*="image"]').first
-            cover_input.set_input_files(args.cover)
-            page.wait_for_timeout(5000)
+            print("Clicked Create New Release. Wait for next page...")
+            await page.wait_for_timeout(5000)
+            
+            print("Script reached the end of the initial skeleton!")
+            input("Press ENTER to close the browser...")
+
         except Exception as e:
-            print(f"WARNING: File attachment step hit non-standard form prompt: {e}")
-
-        print(f"[RouteNote Bot] Draft created for '{args.title}' by {args.artist}.")
-        browser.close()
-
+            print(f"UNEXPECTED ERROR: {e}")
+        finally:
+            await browser.close()
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--audio", required=True, help="Path to .wav file")
+    parser.add_argument("--cover", required=True, help="Path to .png cover art")
+    parser.add_argument("--title", required=True, help="Track Title")
+    parser.add_argument("--artist", required=True, help="Artist Name")
+    args = parser.parse_args()
+
+    asyncio.run(upload_to_routenote(args.audio, args.cover, args.title, args.artist))
