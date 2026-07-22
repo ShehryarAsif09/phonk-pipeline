@@ -130,21 +130,40 @@ def main():
         print(f"[{args.brand}] Waiting for video processing and draft editor...")
         page.wait_for_timeout(5000)
 
+        # Auto-dismiss onboarding modals / popups if present
+        try:
+            modals = page.locator('button:has-text("Got it"), button:has-text("Allow"), button:has-text("Close"), button:has-text("OK"), .TUXModal-close-icon')
+            if modals.count() > 0:
+                print(f"[{args.brand}] Dismissing onboarding modal popup...")
+                modals.first.click(force=True)
+                page.wait_for_timeout(1000)
+        except Exception:
+            pass
+
         # Look for description / caption input editor
         try:
             editor = page.locator('.public-DraftEditor-editor, div[contenteditable="true"], textarea').first
-            editor.wait_for(state="visible", timeout=60000)
-            editor.click()
+            editor.wait_for(state="visible", timeout=30000)
+            editor.click(force=True)
             page.keyboard.press("Control+A")
             page.keyboard.press("Backspace")
             editor.fill(args.caption)
         except Exception as e:
             print(f"[{args.brand}] Warning setting caption: {e}")
 
+        # Re-check and dismiss any modal blocking the post button
+        try:
+            modals = page.locator('button:has-text("Got it"), button:has-text("Allow"), button:has-text("Close"), button:has-text("OK"), .TUXModal-close-icon')
+            if modals.count() > 0:
+                modals.first.click(force=True)
+                page.wait_for_timeout(1000)
+        except Exception:
+            pass
+
         print(f"[{args.brand}] Submitting post...")
         try:
             post_btn = page.locator('button:has-text("Post"), button:has-text("Upload")').first
-            post_btn.click()
+            post_btn.click(force=True)
             page.wait_for_timeout(10000)
         except Exception as e:
             print(f"[{args.brand}] Warning clicking post button: {e}")
