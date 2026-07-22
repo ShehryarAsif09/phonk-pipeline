@@ -93,6 +93,13 @@ def main():
         )
         page = context.new_page()
 
+        print(f"[{args.brand}] Initializing TikTok session on homepage...")
+        try:
+            page.goto("https://www.tiktok.com/", timeout=30000)
+            page.wait_for_timeout(3000)
+        except Exception:
+            pass
+
         print(f"[{args.brand}] Navigating to TikTok Creator Center Upload Page...")
         page.goto("https://www.tiktok.com/tiktokstudio/upload?lang=en", timeout=60000)
         page.wait_for_load_state("networkidle")
