@@ -120,7 +120,7 @@ jobs:
           python3 social-publishing-engine/bot_engine/ig_api_uploader.py --video-url "$PUBLIC_URL" --caption "$CAPTION" || true
           
           echo "--- Uploading to Facebook Page Reels ---"
-          python3 social-publishing-engine/bot_engine/fb_api_uploader.py --video-url "$PUBLIC_URL" --description "$CAPTION" || true
+          python3 social-publishing-engine/bot_engine/fb_api_uploader.py --video-url "$PUBLIC_URL" --file output_reel.mp4 --description "$CAPTION" || true
 
       - name: Upload to TikTok via Playwright
         env:
