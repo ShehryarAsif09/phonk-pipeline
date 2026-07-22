@@ -20,40 +20,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 SIZE = 1400  # Primary Cover Art resolution (1400x1400)
 REEL_W, REEL_H = 1080, 1920  # Reel Background resolution (1080x1920)
 
-PROMPTS_BY_SUBGENRE = {
-    "aura_gym_phonk": {
-        "cover": "Artistic Phonk album cover, dark glowing anime warrior with intense crimson energy aura, sharp demonic horns, high contrast dark red and black digital illustration, 8k trending on ArtStation",
-        "motivational": [
-            "Dark intense gym motivation wallpaper, shadow athlete silhouette with glowing red energy aura, heavy iron weights, 8k cinematic digital art",
-            "Gym Phonk aesthetic, hooded dark anime figure in dark foggy gym with glowing red eyes, intense aura, 8k illustration",
-            "High contrast red and black gym aesthetic, heavy barbell on dark floor, glowing crimson mist, cinematic 8k"
-        ]
-    },
-    "heavy_bass_phonk": {
-        "cover": "Artistic Brazilian Phonk cover, glowing toxic green tactical skull mask in dark smoke, sharp neon green aura, high contrast cyber punk aesthetic, 8k digital illustration",
-        "motivational": [
-            "Dark toxic green aesthetic, glowing skull with neon headphones in dark fog, heavy bass phonk wallpaper, 8k",
-            "Cyberpunk dark street night, glowing green neon aura, mysterious tactical mask figure, 8k digital art",
-            "Heavy bass soundwaves, glowing green neon skull overlay, dark atmospheric background, 8k"
-        ]
-    },
-    "dark_aura_drift": {
-        "cover": "Artistic Dark Drift Phonk album cover, dark Japanese sports car drifting in midnight rain, glowing neon red taillights, smoke clouds, intense aura, 8k digital artwork",
-        "motivational": [
-            "Dark sports car parked in rain, midnight aesthetic, glowing red neon lights, dark anime drift atmosphere, 8k",
-            "Night drive vision, dark highway rain reflection, mysterious red headlights, aura aesthetic, 8k",
-            "Drift smoke in dark city alley, neon red reflections, atmospheric 8k digital illustration"
-        ]
-    },
-    "sigma_rage_phonk": {
-        "cover": "Artistic Phonk cover, dark gothic skull crowned with glowing purple energy, dark anime villain aura, ultra high contrast violet fog, 8k digital illustration",
-        "motivational": [
-            "Dark marble skull statue with glowing purple eyes in dark fog, sigma male aura wallpaper, 8k",
-            "Minimalist dark gothic aesthetic, glowing violet aura energy in dark room, cold confident vibe, 8k",
-            "Dark shadowy figure with glowing purple eyes overlooking dark city, cinematic sigma aura, 8k"
-        ]
-    }
-}
+# Dynamic prompts are now read directly from the generated track batch (powered by Gemini)
 
 
 def _load_font(size: int) -> ImageFont.FreeTypeFont:
@@ -138,10 +105,12 @@ def generate_assets_for_track(track: dict, out_covers_dir: Path, out_reels_dir: 
     subgenre = track.get("subgenre", "aura_gym_phonk")
     title = track.get("title", slug)
 
-    prompts = PROMPTS_BY_SUBGENRE.get(subgenre, PROMPTS_BY_SUBGENRE["aura_gym_phonk"])
+    # Use dynamically generated Gemini prompts if available, fallback to static defaults
+    cover_prompt = track.get("cover_prompt", f"Artistic {subgenre} album cover, dark aesthetic, 8k digital art")
+    motivational_prompt = track.get("motivational_prompt", f"Dark intense {subgenre} gym motivation wallpaper, glowing aura, 8k cinematic")
     
     print(f"[Cover Gen] Generating AI Cover Art for '{slug}'...")
-    base_cover = fetch_pollinations_image(prompts["cover"], 1024, 1024)
+    base_cover = fetch_pollinations_image(cover_prompt, 1024, 1024)
     if not base_cover:
         base_cover = generate_fallback_image(SIZE, SIZE, title)
     
@@ -154,7 +123,8 @@ def generate_assets_for_track(track: dict, out_covers_dir: Path, out_reels_dir: 
     existing_frames = list(out_reels_dir.glob("*.png"))
     existing_frames = [f for f in existing_frames if not f.name.startswith("reel_bg_")]
 
-    motivational_prompts = prompts["motivational"]
+    # We only need 3 variants, Pollinations uses random seed on each call
+    motivational_prompts = [motivational_prompt] * 3
     for idx, m_prompt in enumerate(motivational_prompts, start=1):
         bg_file = out_reels_dir / f"reel_bg_{idx}_{slug}.png"
         
@@ -166,7 +136,8 @@ def generate_assets_for_track(track: dict, out_covers_dir: Path, out_reels_dir: 
             continue
 
         print(f"[Reel Image Gen] Generating Reel BG #{idx} for '{slug}'...")
-        reel_img = fetch_pollinations_image(m_prompt, 1080, 1920)
+        # Appending idx to prompt slightly modifies it to force more variation from Pollinations
+        reel_img = fetch_pollinations_image(f"{m_prompt} (variant {idx})", 1080, 1920)
         if not reel_img:
             reel_img = generate_fallback_image(1080, 1920, f"REEL {idx}")
         else:

@@ -166,7 +166,9 @@ def fallback_prompt_generator(subgenre: str, index: int, history_slugs: set, his
         "duration": DEFAULT_DURATION,
         "language": "en",
         "mood": "aura_dark_gym",
-        "theme": theme
+        "theme": theme,
+        "cover_prompt": "Artistic Phonk album cover, dark glowing anime warrior with intense crimson energy aura, high contrast 8k digital illustration",
+        "motivational_prompt": "Dark intense gym motivation wallpaper, shadow athlete silhouette with glowing red energy aura, heavy iron weights, 8k cinematic digital art"
     }
 
 
@@ -180,18 +182,20 @@ def generate_batch(count: int = 4, seed: int | None = None) -> list[dict]:
     groq_key = os.getenv("GROQ_API_KEY")
 
     system_prompt = (
-        "You are an expert Phonk music producer specialized strictly in Dark Gym Phonk, Heavy Bass Phonk, and Aura Phonk. "
-        "Your goal is to generate dynamic, detailed, 2-minute track prompts for the ACE-Step-1.5 AI music generator. "
+        "You are an expert Phonk music producer and visual art director specialized in Dark Gym Phonk, Heavy Bass Phonk, and Aura Phonk. "
+        "Your goal is to generate dynamic, detailed, 2-minute track concepts and their accompanying aesthetic visual prompts. "
         "Every track must have a time-structured arrangement (0-30s intro/build, 30-60s 808 drop, 60-90s breakdown, 90-120s climax). "
         "You MUST return a JSON object with a key 'prompts' containing an array of track objects. "
-        "Each track object must have fields: 'subgenre', 'title', 'caption', 'bpm', 'keyscale'."
+        "Each track object must have fields: 'subgenre', 'title', 'caption', 'bpm', 'keyscale', 'cover_prompt', and 'motivational_prompt'. "
+        "For 'cover_prompt', write a highly detailed Midjourney-style image prompt for the 1:1 album cover based on the track's theme. "
+        "For 'motivational_prompt', write a highly detailed 9:16 vertical image prompt for a dark aesthetic gym/sigma reel background."
     )
 
     user_prompt = (
         f"Generate {count} unique Phonk track concepts. "
         f"Subgenres to select from: {list(AURA_SUBGENRES.keys())}. "
         f"Recent track captions to AVOID repeating: {json.dumps(recent_captions[-4:])}. "
-        f"Make sure every track has heavy 808 bass, dark aura atmosphere, and workout gym energy."
+        f"Ensure visually striking and unique cover and motivational prompts for each."
     )
 
     llm_response = None
@@ -227,7 +231,9 @@ def generate_batch(count: int = 4, seed: int | None = None) -> list[dict]:
                     "timesignature": "4",
                     "duration": DEFAULT_DURATION,
                     "language": "en",
-                    "mood": "aura_dark_gym"
+                    "mood": "aura_dark_gym",
+                    "cover_prompt": item.get("cover_prompt", "Artistic Phonk album cover, dark aesthetic, 8k trending on ArtStation"),
+                    "motivational_prompt": item.get("motivational_prompt", "Dark intense gym motivation wallpaper, glowing aura, 8k cinematic")
                 })
                 history_slugs.add(slug)
         except Exception as e:
