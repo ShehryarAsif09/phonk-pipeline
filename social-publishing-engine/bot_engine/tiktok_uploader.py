@@ -253,8 +253,20 @@ def main():
         except Exception as e:
             print(f"[{args.brand}] ❌ Error clicking post button: {e}")
 
-        # Step 11: Wait for upload and capture final state
+        # Step 11: Wait for upload, handle final confirmation modal, and capture final state
         if posted:
+            print(f"[{args.brand}] Waiting to see if 'Continue to post?' confirmation modal appears...")
+            page.wait_for_timeout(3000)
+            try:
+                # Handle the "Continue to post?" modal
+                post_now_btn = page.locator('button:has-text("Post now")')
+                if post_now_btn.count() > 0:
+                    print(f"[{args.brand}] Found 'Continue to post?' modal. Clicking 'Post now'...")
+                    post_now_btn.first.click(force=True)
+                    page.wait_for_timeout(2000)
+            except Exception as e:
+                print(f"[{args.brand}] No confirmation modal or error handling it: {e}")
+            
             print(f"[{args.brand}] Waiting 25s for upload to complete...")
             page.wait_for_timeout(25000)
 
