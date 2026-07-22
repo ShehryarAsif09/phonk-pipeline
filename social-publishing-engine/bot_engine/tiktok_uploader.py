@@ -102,7 +102,10 @@ def main():
 
         print(f"[{args.brand}] Navigating to TikTok Creator Center Upload Page...")
         page.goto("https://www.tiktok.com/tiktokstudio/upload?lang=en", timeout=60000)
-        page.wait_for_load_state("networkidle")
+        try:
+            page.wait_for_load_state("domcontentloaded", timeout=15000)
+        except Exception:
+            pass
 
         # Check if redirected to login
         if "login" in page.url.lower():
