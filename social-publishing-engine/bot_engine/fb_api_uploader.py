@@ -69,7 +69,8 @@ def main():
             data=file_bytes,
             headers={
                 "Authorization": f"OAuth {access_token}",
-                "file_offset": "0",
+                "Offset": "0",
+                "offset": "0",
                 "Content-Type": "application/octet-stream"
             }
         )

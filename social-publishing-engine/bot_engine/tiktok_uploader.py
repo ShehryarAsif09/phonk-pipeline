@@ -160,7 +160,8 @@ def main():
         except Exception:
             pass
 
-        print(f"[{args.brand}] Submitting post...")
+        print(f"[{args.brand}] Submitting post (waiting for video processing)...")
+        page.wait_for_timeout(10000)
         try:
             # Explicit selectors targeting the form footer submit button, excluding sidebar
             post_btn = page.locator('button[data-e2e="post_video"], div.btn-post button, button.btn-post, div[class*="btn-post"] button').first
@@ -169,7 +170,8 @@ def main():
 
             post_btn.wait_for(state="attached", timeout=15000)
             post_btn.click(force=True)
-            page.wait_for_timeout(10000)
+            print(f"[{args.brand}] Post button clicked! Waiting 15s for upload completion...")
+            page.wait_for_timeout(15000)
         except Exception as e:
             print(f"[{args.brand}] Warning clicking post button: {e}")
 
