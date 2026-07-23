@@ -124,29 +124,53 @@ jobs:
           echo "--- Uploading to Facebook Page Reels ---"
           python3 social-publishing-engine/bot_engine/fb_api_uploader.py --video-url "$PUBLIC_URL" --file output_reel.mp4 --description "$CAPTION" || true
 
-          echo "--- Uploading to Pinterest Idea Pins ---"
-          python3 social-publishing-engine/bot_engine/pinterest_uploader.py --file output_reel.mp4 --title "Gym Phonk Drop 🔥" --description "$CAPTION" --link "https://publixion.com" || true
-
-      - name: Upload to TikTok via Playwright
+      - name: Upload via Playwright (Cookie Based)
         env:
           TIKTOK_COOKIES_JSON: ${{ secrets.TIKTOK_COOKIES_JSON }}
+          PINTEREST_COOKIES_JSON: ${{ secrets.PINTEREST_COOKIES_JSON }}
+          LINKEDIN_COOKIES_JSON: ${{ secrets.LINKEDIN_COOKIES_JSON }}
         run: |
+          CAPTION="🔥 Phonk Daily Drop 🔥 #phonk #gymphonk #drift #music #sigma #gymmotivation"
+          
+          # TikTok
           if [ -z "$TIKTOK_COOKIES_JSON" ]; then
             echo "ERROR: TIKTOK_COOKIES_JSON secret is empty. Skipping TikTok."
           else
             mkdir -p cookies
             echo "$TIKTOK_COOKIES_JSON" > ./cookies/phonk_pipeline_tiktok_cookies.json
-            CAPTION="🔥 Phonk Daily Drop 🔥 #phonk #gymphonk #drift #music #sigma #gymmotivation"
             echo "--- Uploading to TikTok ---"
             python3 social-publishing-engine/bot_engine/tiktok_uploader.py --brand phonk_pipeline --file output_reel.mp4 --caption "$CAPTION" || true
           fi
 
-      - name: Upload TikTok Debug Screenshots
+          # Pinterest
+          if [ -z "$PINTEREST_COOKIES_JSON" ]; then
+            echo "ERROR: PINTEREST_COOKIES_JSON secret is empty. Skipping Pinterest."
+          else
+            mkdir -p cookies
+            echo "$PINTEREST_COOKIES_JSON" > ./cookies/phonk_pipeline_pinterest_cookies.json
+            echo "--- Uploading to Pinterest ---"
+            python3 social-publishing-engine/bot_engine/pinterest_cookie_uploader.py --brand phonk_pipeline --file output_reel.mp4 --caption "$CAPTION" --link "https://publixion.com" || true
+          fi
+
+          # LinkedIn
+          if [ -z "$LINKEDIN_COOKIES_JSON" ]; then
+            echo "ERROR: LINKEDIN_COOKIES_JSON secret is empty. Skipping LinkedIn."
+          else
+            mkdir -p cookies
+            echo "$LINKEDIN_COOKIES_JSON" > ./cookies/phonk_pipeline_linkedin_cookies.json
+            echo "--- Uploading to LinkedIn ---"
+            python3 social-publishing-engine/bot_engine/linkedin_cookie_uploader.py --brand phonk_pipeline --file output_reel.mp4 --caption "$CAPTION" || true
+          fi
+
+      - name: Upload Playwright Debug Screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tiktok-debug-screenshots
-          path: tiktok_debug_screenshots/
+          name: playwright-debug-screenshots
+          path: |
+            tiktok_debug_screenshots/
+            pinterest_debug_screenshots/
+            linkedin_debug_screenshots/
           if-no-files-found: ignore
 
       - name: Update State and Commit
