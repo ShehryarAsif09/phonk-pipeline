@@ -85,7 +85,7 @@ jobs:
       - name: Re-generate prompts, covers, metadata (to match state)
         if: steps.check_status.outputs.ready == 'true'
         run: |
-          python prompts/prompt_generator.py --count 20 --out output/prompts_batch.json
+          python prompts/prompt_generator.py --count 4 --out output/prompts_batch.json
           python cover/cover_art.py --prompts output/prompts_batch.json --out-dir output/covers
           python metadata/metadata_builder.py --prompts output/prompts_batch.json --out output/metadata.json
 
