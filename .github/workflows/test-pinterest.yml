@@ -27,10 +27,9 @@ jobs:
         env:
           PINTEREST_COOKIES_JSON: ${{ secrets.PINTEREST_COOKIES_JSON }}
         run: |
-          # Use a sample short video if output_reel.mp4 doesn't exist locally
-          # In the main pipeline, the video is downloaded from a release.
-          # For testing, we'll download a sample or use a dummy file.
-          wget -qO test_reel.mp4 "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4"
+          # Generate a reliable 2-second dummy video for testing to avoid SSL/download issues
+          sudo apt-get install -y ffmpeg
+          ffmpeg -f lavfi -i testsrc=duration=2:size=720x1280:rate=30 -c:v libx264 test_reel.mp4
           
           if [ -z "$PINTEREST_COOKIES_JSON" ]; then
             echo "ERROR: PINTEREST_COOKIES_JSON secret is empty. Cannot test."
