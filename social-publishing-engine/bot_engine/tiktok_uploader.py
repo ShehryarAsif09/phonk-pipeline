@@ -112,6 +112,7 @@ def main():
     parser.add_argument("--brand", required=True, help="Brand ID (e.g. phonk_pipeline)")
     parser.add_argument("--file", required=True, help="Absolute path to .mp4 file")
     parser.add_argument("--caption", required=True, help="Caption text including hashtags")
+    parser.add_argument("--proxy", required=False, default=None, help="Proxy server URL (e.g. http://ip:port or socks5://ip:port)")
     args = parser.parse_args()
 
     cookie_path = Path(f"./cookies/{args.brand}_tiktok_cookies.json")
@@ -134,6 +135,12 @@ def main():
 
     storage_state_file = prepare_playwright_storage_state(cookie_path)
 
+    # Check for proxy from CLI arg or environment variable
+    proxy_url = args.proxy or os.getenv("TIKTOK_PROXY") or os.getenv("PROXY_URL")
+    proxy_config = {"server": proxy_url} if proxy_url else None
+    if proxy_config:
+        print(f"[{args.brand}] 🌐 Routing traffic through proxy: {proxy_url}")
+
     print(f"[{args.brand}] Launching Stealth Google Chrome for TikTok Upload...")
     with sync_playwright() as p:
         browser = p.chromium.launch(
@@ -148,6 +155,7 @@ def main():
         )
         context = browser.new_context(
             storage_state=storage_state_file,
+            proxy=proxy_config,
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
             viewport={"width": 1280, "height": 800},
             locale="en-US",
