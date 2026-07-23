@@ -21,15 +21,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f social-publishing-engine/bot_engine/requirements.txt ]; then pip install -r social-publishing-engine/bot_engine/requirements.txt; fi
-          playwright install chromium --with-deps
+          playwright install chrome --with-deps
 
       - name: Run Pinterest Uploader
         env:
           PINTEREST_COOKIES_JSON: ${{ secrets.PINTEREST_COOKIES_JSON }}
         run: |
-          # Generate a web-optimized 5-second dummy video (faststart, baseline) for testing
+          # Generate a 5-second H.264 test video with silent audio
           sudo apt-get install -y ffmpeg
-          ffmpeg -f lavfi -i testsrc=duration=5:size=720x1280:rate=30 -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -c:v libx264 -profile:v baseline -pix_fmt yuv420p -c:a aac -shortest -movflags +faststart test_reel.mp4
+          ffmpeg -f lavfi -i testsrc=duration=5:size=720x1280:rate=30 -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest -movflags +faststart test_reel.mp4
           
           if [ -z "$PINTEREST_COOKIES_JSON" ]; then
             echo "ERROR: PINTEREST_COOKIES_JSON secret is empty. Cannot test."
