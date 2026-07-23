@@ -161,16 +161,27 @@ def main():
 
             # --- Publish ---
             print(f"[{args.brand}] Clicking Publish...")
-            publish_btn = page.locator('button[data-test-id="board-dropdown-save-button"], button:has-text("Publish")')
-            if publish_btn.count() > 0:
-                # Check if the button is actually enabled
-                is_disabled = publish_btn.first.is_disabled()
+            # Try multiple selector strategies — Pinterest's DOM changes frequently
+            publish_btn = None
+            for selector in [
+                page.get_by_role("button", name="Publish"),
+                page.locator('button[data-test-id="board-dropdown-save-button"]'),
+                page.locator('button:has-text("Publish")'),
+                page.locator('div[data-test-id="stale-board-dropdown"] button'),
+                page.locator('button[aria-label="Publish"]'),
+            ]:
+                if selector.count() > 0:
+                    publish_btn = selector.first
+                    break
+
+            if publish_btn:
+                is_disabled = publish_btn.is_disabled()
                 if is_disabled:
-                    print(f"[{args.brand}] ⚠️  Publish button is DISABLED. Video may have been rejected or board not selected.", file=sys.stderr)
+                    print(f"[{args.brand}] ⚠️  Publish button is DISABLED.", file=sys.stderr)
                     screenshot(page, "04_publish_disabled", args.brand)
                     sys.exit(1)
 
-                publish_btn.first.click()
+                publish_btn.click()
                 print(f"[{args.brand}] Clicked Publish. Waiting for confirmation...")
                 page.wait_for_timeout(15000)
             else:
