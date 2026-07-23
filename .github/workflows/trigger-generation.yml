@@ -20,7 +20,7 @@ jobs:
 
       - name: 1-3. Generate prompts, covers, metadata (CPU, free)
         run: |
-          python prompts/prompt_generator.py --count 20 --out output/prompts_batch.json
+          python prompts/prompt_generator.py --count 4 --out output/prompts_batch.json
           python cover/cover_art.py --prompts output/prompts_batch.json --out-dir output/covers
           python metadata/metadata_builder.py --prompts output/prompts_batch.json --out output/metadata.json
 
