@@ -1,0 +1,50 @@
+name: Test LinkedIn Playwright Uploader
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-linkedin:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f social-publishing-engine/bot_engine/requirements.txt ]; then pip install -r social-publishing-engine/bot_engine/requirements.txt; fi
+          playwright install chromium --with-deps
+
+      - name: Run LinkedIn Uploader
+        env:
+          LINKEDIN_COOKIES_JSON: ${{ secrets.LINKEDIN_COOKIES_JSON }}
+        run: |
+          # Download a sample video for testing
+          wget -qO test_reel.mp4 "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4"
+          
+          if [ -z "$LINKEDIN_COOKIES_JSON" ]; then
+            echo "ERROR: LINKEDIN_COOKIES_JSON secret is empty. Cannot test."
+            exit 1
+          else
+            mkdir -p cookies
+            echo "$LINKEDIN_COOKIES_JSON" > ./cookies/publixion_pipeline_linkedin_cookies.json
+            CAPTION="Check out our latest Publixion drop! 🚀 #ecommerce #products"
+            echo "--- Uploading to LinkedIn ---"
+            python3 social-publishing-engine/bot_engine/linkedin_cookie_uploader.py --brand publixion_pipeline --file test_reel.mp4 --caption "$CAPTION"
+          fi
+
+      - name: Upload LinkedIn Debug Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linkedin-test-screenshots
+          path: linkedin_debug_screenshots/
+          if-no-files-found: ignore

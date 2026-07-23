@@ -1,0 +1,52 @@
+name: Test Pinterest Playwright Uploader
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-pinterest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f social-publishing-engine/bot_engine/requirements.txt ]; then pip install -r social-publishing-engine/bot_engine/requirements.txt; fi
+          playwright install chromium --with-deps
+
+      - name: Run Pinterest Uploader
+        env:
+          PINTEREST_COOKIES_JSON: ${{ secrets.PINTEREST_COOKIES_JSON }}
+        run: |
+          # Use a sample short video if output_reel.mp4 doesn't exist locally
+          # In the main pipeline, the video is downloaded from a release.
+          # For testing, we'll download a sample or use a dummy file.
+          wget -qO test_reel.mp4 "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4"
+          
+          if [ -z "$PINTEREST_COOKIES_JSON" ]; then
+            echo "ERROR: PINTEREST_COOKIES_JSON secret is empty. Cannot test."
+            exit 1
+          else
+            mkdir -p cookies
+            echo "$PINTEREST_COOKIES_JSON" > ./cookies/phonk_pipeline_pinterest_cookies.json
+            CAPTION="🔥 Phonk Daily Drop 🔥 #phonk #gymphonk #gymmotivation"
+            echo "--- Uploading to Pinterest ---"
+            python3 social-publishing-engine/bot_engine/pinterest_cookie_uploader.py --brand phonk_pipeline --file test_reel.mp4 --caption "$CAPTION" --link "https://publixion.com"
+          fi
+
+      - name: Upload Pinterest Debug Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pinterest-test-screenshots
+          path: pinterest_debug_screenshots/
+          if-no-files-found: ignore
