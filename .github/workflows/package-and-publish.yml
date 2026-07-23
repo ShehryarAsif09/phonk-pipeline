@@ -84,6 +84,10 @@ jobs:
 
       - name: Re-generate prompts, covers, metadata (to match state)
         if: steps.check_status.outputs.ready == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           python prompts/prompt_generator.py --count 4 --out output/prompts_batch.json
           python cover/cover_art.py --prompts output/prompts_batch.json --out-dir output/covers

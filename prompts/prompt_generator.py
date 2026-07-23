@@ -62,7 +62,7 @@ def save_history(history: list):
 
 
 def call_gemini_api(system_prompt: str, user_prompt: str, api_key: str) -> str | None:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    models = ["gemini-2.0-flash", "gemini-1.5-flash"]
     payload = {
         "contents": [
             {
@@ -77,15 +77,19 @@ def call_gemini_api(system_prompt: str, user_prompt: str, api_key: str) -> str |
         }
     }
     data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            res_json = json.loads(resp.read().decode("utf-8"))
-            text = res_json["candidates"][0]["content"]["parts"][0]["text"]
-            return text
-    except Exception as e:
-        print(f"[LLM] Gemini API call failed ({e}), trying fallback...", file=sys.stderr)
-        return None
+
+    for model in models:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                res_json = json.loads(resp.read().decode("utf-8"))
+                text = res_json["candidates"][0]["content"]["parts"][0]["text"]
+                return text
+        except Exception as e:
+            print(f"[LLM] Gemini API call for model '{model}' failed ({e}), trying fallback...", file=sys.stderr)
+
+    return None
 
 
 def call_groq_api(system_prompt: str, user_prompt: str, api_key: str) -> str | None:
