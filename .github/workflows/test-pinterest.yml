@@ -29,7 +29,7 @@ jobs:
         run: |
           # Generate a reliable 2-second dummy video for testing to avoid SSL/download issues
           sudo apt-get install -y ffmpeg
-          ffmpeg -f lavfi -i testsrc=duration=2:size=720x1280:rate=30 -c:v libx264 test_reel.mp4
+          ffmpeg -f lavfi -i testsrc=duration=2:size=720x1280:rate=30 -c:v libx264 -pix_fmt yuv420p test_reel.mp4
           
           if [ -z "$PINTEREST_COOKIES_JSON" ]; then
             echo "ERROR: PINTEREST_COOKIES_JSON secret is empty. Cannot test."

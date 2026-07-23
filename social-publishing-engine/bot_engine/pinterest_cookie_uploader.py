@@ -102,6 +102,17 @@ def main():
             file_input = page.locator('input[type="file"]')
             file_input.set_input_files(str(local_file))
             page.wait_for_timeout(5000)
+            
+            # Dismiss any "Great Pins made easy" tutorial popups
+            print(f"[{args.brand}] Dismissing tutorial popups...")
+            page.keyboard.press("Escape")
+            close_btns = page.locator('button[aria-label*="close" i], button:has-text("Next"), button:has-text("Done")')
+            for i in range(close_btns.count()):
+                try:
+                    close_btns.nth(i).click(timeout=1000)
+                except:
+                    pass
+            page.wait_for_timeout(1000)
             screenshot(page, "02_after_file_attached", args.brand)
             
             # Step 2: Fill Title
@@ -112,13 +123,13 @@ def main():
             
             # Step 3: Fill Description
             print(f"[{args.brand}] Filling description...")
-            desc_input = page.locator('div[data-test-id="editor-with-mentions"] [contenteditable="true"]')
+            desc_input = page.get_by_placeholder("Tell everyone what your Pin is about")
             if desc_input.count() > 0:
-                desc_input.first.type(args.caption)
+                desc_input.first.fill(args.caption)
             else:
-                fallback_desc = page.locator('textarea[placeholder*="Tell everyone" i]')
+                fallback_desc = page.locator('div[data-test-id="editor-with-mentions"] [contenteditable="true"]')
                 if fallback_desc.count() > 0:
-                    fallback_desc.first.fill(args.caption)
+                    fallback_desc.first.type(args.caption)
             
             # Step 4: Fill Link
             print(f"[{args.brand}] Filling link...")
