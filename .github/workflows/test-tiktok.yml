@@ -1,0 +1,52 @@
+name: Test TikTok Playwright Uploader (Stealth + Proxy)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-tiktok:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f social-publishing-engine/bot_engine/requirements.txt ]; then pip install -r social-publishing-engine/bot_engine/requirements.txt; fi
+          playwright install chrome --with-deps
+
+      - name: Run TikTok Stealth Uploader
+        env:
+          TIKTOK_COOKIES_JSON: ${{ secrets.TIKTOK_COOKIES_JSON }}
+          TIKTOK_PROXY: ${{ secrets.TIKTOK_PROXY }}
+        run: |
+          # Generate a 5-second web-optimized H.264 test video
+          sudo apt-get install -y ffmpeg
+          ffmpeg -f lavfi -i testsrc=duration=5:size=720x1280:rate=30 -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 -c:v libx264 -profile:v baseline -pix_fmt yuv420p -c:a aac -shortest -movflags +faststart test_reel.mp4
+          
+          if [ -z "$TIKTOK_COOKIES_JSON" ]; then
+            echo "ERROR: TIKTOK_COOKIES_JSON secret is empty. Cannot test."
+            exit 1
+          else
+            mkdir -p cookies
+            echo "$TIKTOK_COOKIES_JSON" > ./cookies/phonk_pipeline_tiktok_cookies.json
+            CAPTION="🔥 Phonk Daily Drop 🔥 #phonk #gymphonk #gymmotivation"
+            echo "--- Uploading to TikTok via Stealth Chrome + Proxy ---"
+            python3 social-publishing-engine/bot_engine/tiktok_uploader.py --brand phonk_pipeline --file test_reel.mp4 --caption "$CAPTION"
+          fi
+
+      - name: Upload TikTok Debug Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiktok-test-screenshots
+          path: tiktok_debug_screenshots/
+          if-no-files-found: ignore
